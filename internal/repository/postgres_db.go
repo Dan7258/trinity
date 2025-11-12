@@ -1,4 +1,4 @@
-package model
+package repository
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ type PostgresDB struct {
 	Conn *gorm.DB
 }
 
-func(db *PostgresDB) GetConn() *gorm.DB {
+func (db *PostgresDB) GetConn() *gorm.DB {
 	return db.Conn
 }
 

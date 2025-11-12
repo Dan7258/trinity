@@ -3,17 +3,17 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"trinity/internal/model"
+	"trinity/internal/models"
 	"trinity/pkg/kuznechik"
 	"trinity/pkg/rsa"
 	"trinity/pkg/stribog"
 )
 
 type Handler struct {
-	db *model.Model
+	db *models.Model
 }
 
-func NewHandler(db model.Model) *Handler {
+func NewHandler(db models.Model) *Handler {
 	return &Handler{
 		db: &db,
 	}

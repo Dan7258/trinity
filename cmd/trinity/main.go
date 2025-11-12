@@ -6,13 +6,13 @@ import (
 	"time"
 	"trinity/internal/config"
 	"trinity/internal/handler"
-	"trinity/internal/model"
+	"trinity/internal/repository"
 )
 
 func main() {
 	mux := http.NewServeMux()
 	config.Init()
-	db := &model.PostgresDB{}
+	db := &repository.PostgresDB{}
 	err := db.ConnectToDatabase()
 	if err != nil {
 		log.Fatal(err)
