@@ -22,16 +22,14 @@ type LargeNums struct {
 	q *big.Int
 }
 
-type Data struct {
-	Message string `json:"message"`
-}
+
 type EncryptedData struct {
 	EncryptedMessage string `json:"encrypted_message"`
 	D                string `json:"d"`
 	N                string `json:"n"`
 }
 
-func EncodeData(data *Data) (*EncryptedData, error) {
+func EncodeData(text string) (*EncryptedData, error) {
 	ed := new(EncryptedData)
 	largeNums := &LargeNums{
 		new(big.Int),
@@ -57,7 +55,7 @@ func EncodeData(data *Data) (*EncryptedData, error) {
 		return nil, err
 	}
 	ed.D = d.String()
-	c, err := encode(encrypt, data.Message)
+	c, err := encode(encrypt, text)
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +63,7 @@ func EncodeData(data *Data) (*EncryptedData, error) {
 	return ed, nil
 }
 
-func DecodeData(ed *EncryptedData) (*Data, error) {
+func DecodeData(ed *EncryptedData) (*string, error) {
 	decrypt := new(Decrypt)
 	decrypt.d = new(big.Int)
 	decrypt.n = new(big.Int)
@@ -79,15 +77,13 @@ func DecodeData(ed *EncryptedData) (*Data, error) {
 	if !ok {
 		return nil, errors.New("failed to decode N")
 	}
-	data := new(Data)
 	em := new(big.Int)
 	_, ok = em.SetString(ed.EncryptedMessage, 10)
 	if !ok {
 		return nil, errors.New("failed to decode Message")
 	}
-	var err error
-	data.Message, err = decode(decrypt, em)
-	return data, err
+	message, err := decode(decrypt, em)
+	return &message, err
 }
 
 func (ln *LargeNums) generateLargeNums() error {

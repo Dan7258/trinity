@@ -45,18 +45,8 @@ async function encrypt(algorithm) {
 
     output.innerHTML = '<em>Обработка...</em>';
 
-    let url, body;
-
-    if (algorithm === 'rsa') {
-        url = '/encode/rsa';
-        body = JSON.stringify({ message });
-    } else if (algorithm === 'stribog') {
-        url = '/encrypt/stribog';  // ← Замени, если путь другой
-        body = JSON.stringify({ message });
-    } else {
-        url = `/encrypt/${algorithm}`;
-        body = JSON.stringify({ message });
-    }
+    const url = `/encode/${algorithm}`;
+    const body = JSON.stringify({ message });
 
     try {
         const response = await fetch(url, {
@@ -69,28 +59,41 @@ async function encrypt(algorithm) {
             let jsonToCopy;
 
             if (algorithm === 'rsa') {
-                jsonToCopy = JSON.stringify(data, null, 2);
+                jsonToCopy = JSON.stringify({
+                    encrypted_message: data.encrypted_message,
+                    d: data.d,
+                    n: data.n
+                }, null, 2);
                 output.dataset.rawJson = jsonToCopy;
 
                 output.innerHTML = `
                     <strong>Зашифрованное сообщение:</strong><br>
-                    <div style="overflow-x:auto; max-width:100%;"><code>${data.encrypted_message || '—'}</code></div><br>
+                    <div style="overflow-x:auto;"><code>${data.encrypted_message || '—'}</code></div><br>
                     <strong>d:</strong><br>
-                    <div style="overflow-x:auto; max-width:100%;"><code>${data.d || '—'}</code></div><br>
+                    <div style="overflow-x:auto;"><code>${data.d || '—'}</code></div><br>
                     <strong>n:</strong><br>
-                    <div style="overflow-x:auto; max-width:100%;"><code>${data.n || '—'}</code></div><br><br>
-                    <em>Нажмите "Копировать результат" ниже:</em>
+                    <div style="overflow-x:auto;"><code>${data.n || '—'}</code></div>
                 `;
-            } else if (algorithm === 'stribog') {
-                const result = data.hash || JSON.stringify(data, null, 2);
-                jsonToCopy = JSON.stringify({ hash: data.hash }, null, 2);
+            }
+            else if (algorithm === 'kuznechik') {
+                jsonToCopy = JSON.stringify({
+                    encrypted_message: data.encrypted_message,
+                    key: data.key
+                }, null, 2);
                 output.dataset.rawJson = jsonToCopy;
-                output.innerText = result;
-            } else {
-                const result = data.cipher || JSON.stringify(data, null, 2);
-                jsonToCopy = JSON.stringify({ cipher: data.cipher }, null, 2);
+
+                output.innerHTML = `
+                    <strong>Шифротекст:</strong><br>
+                    <div style="overflow-x:auto;"><code>${data.encrypted_message || '—'}</code></div><br>
+                    <strong>Ключ:</strong><br>
+                    <div style="overflow-x:auto;"><code>${data.key || '—'}</code></div>
+                `;
+            }
+            else if (algorithm === 'stribog') {
+                const hash = data.encrypted_message || data.hash || '';
+                jsonToCopy = JSON.stringify({ hash }, null, 2);
                 output.dataset.rawJson = jsonToCopy;
-                output.innerText = result;
+                output.innerText = hash;
             }
         });
 
@@ -134,9 +137,30 @@ async function decrypt(algorithm) {
             d: encryptedObj.d,
             n: encryptedObj.n
         });
-    } else {
-        url = `/decrypt/${algorithm}`;
-        body = JSON.stringify({ cipher: rawInput });
+    }
+    else if (algorithm === 'kuznechik') {
+        let encryptedObj;
+        try {
+            encryptedObj = JSON.parse(rawInput);
+        } catch (e) {
+            output.innerHTML = `<span style="color: red;">Неверный JSON. Ожидается: {"encrypted_message": "...", "key": "..."}</span>`;
+            return;
+        }
+
+        if (!encryptedObj.encrypted_message || !encryptedObj.key) {
+            output.innerHTML = `<span style="color: red;">JSON должен содержать поля: encrypted_message, key</span>`;
+            return;
+        }
+
+        url = '/decode/kuznechik';
+        body = JSON.stringify({
+            encrypted_message: encryptedObj.encrypted_message,
+            key: encryptedObj.key
+        });
+    }
+    else {
+        output.innerHTML = `<span style="color: red;">Расшифровка для ${algorithm} не поддерживается</span>`;
+        return;
     }
 
     try {
@@ -147,19 +171,10 @@ async function decrypt(algorithm) {
         });
 
         await handleResponse(response, output, (data) => {
-            let jsonToCopy;
-
-            if (algorithm === 'rsa') {
-                const message = data.message || '';
-                jsonToCopy = JSON.stringify({ message }, null, 2);
-                output.dataset.rawJson = jsonToCopy;
-                output.innerText = message || 'Расшифровано (пусто)';
-            } else {
-                const message = data.message || JSON.stringify(data, null, 2);
-                jsonToCopy = JSON.stringify({ message: data.message }, null, 2);
-                output.dataset.rawJson = jsonToCopy;
-                output.innerText = message;
-            }
+            const message = data.message || '';
+            const jsonToCopy = JSON.stringify({ message }, null, 2);
+            output.dataset.rawJson = jsonToCopy;
+            output.innerText = message || 'Расшифровано (пусто)';
         });
 
     } catch (error) {

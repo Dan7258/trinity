@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"trinity/internal/model"
+	"trinity/pkg/kuznechik"
 	"trinity/pkg/rsa"
 )
 
@@ -27,6 +28,10 @@ func jsonError(w http.ResponseWriter, status int, msg string) {
 	w.Write(resp)
 }
 
+type Data struct {
+	Message string `json:"message"`
+}
+
 func (h *Handler) MainPage(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir("web/html")).ServeHTTP(w, r)
 }
@@ -35,41 +40,80 @@ func (h *Handler) Static(w http.ResponseWriter, r *http.Request) {
 	http.StripPrefix("/static/", http.FileServer(http.Dir("web/"))).ServeHTTP(w, r)
 }
 
-func (h *Handler) EncodeRSA(w http.ResponseWriter, r *http.Request) {
-	data := new(rsa.Data)
+func (h *Handler) Encode(w http.ResponseWriter, r *http.Request) {
+	algorithm := r.PathValue("algorithm")
+	if algorithm == "" {
+		jsonError(w, http.StatusBadRequest, "algorithm is required")
+		return
+	}
+	data := new(Data)
 	err := json.NewDecoder(r.Body).Decode(data)
 	if err != nil {
 		jsonError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	encodeData, err := rsa.EncodeData(data)
-	if err != nil {
-		jsonError(w, http.StatusInternalServerError, err.Error())
+	var resp []byte
+	switch algorithm {
+	case "kuznechik":
+		resp, err = json.Marshal(kuznechik.EncryptText(data.Message))
+	case "rsa":
+		var encodeData *rsa.EncryptedData
+		encodeData, err = rsa.EncodeData(data.Message)
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp, err = json.Marshal(encodeData)
+	case "stribog":
+	default:
+		jsonError(w, http.StatusBadRequest, "unknown algorithm")
 		return
 	}
-	m, err := json.Marshal(encodeData)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(m)
+	w.Write(resp)
 }
 
-func (h *Handler) DecodeRSA(w http.ResponseWriter, r *http.Request) {
-	decodeData := new(rsa.EncryptedData)
-	err := json.NewDecoder(r.Body).Decode(decodeData)
-	if err != nil {
-		jsonError(w, http.StatusBadRequest, err.Error())
+func (h *Handler) Decode(w http.ResponseWriter, r *http.Request) {
+	algorithm := r.PathValue("algorithm")
+	if algorithm == "" {
+		jsonError(w, http.StatusBadRequest, "algorithm is required")
 		return
 	}
-	data := new(rsa.Data)
-	data, err = rsa.DecodeData(decodeData)
+	var err error
+	var text *string
+	switch algorithm {
+	case "kuznechik":
+		decodeData := new(kuznechik.EncryptedData)
+		err = json.NewDecoder(r.Body).Decode(decodeData)
+		if err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		text = kuznechik.DecryptText(*decodeData)
+	case "rsa":
+		decodeData := new(rsa.EncryptedData)
+		err = json.NewDecoder(r.Body).Decode(decodeData)
+		if err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		text, err = rsa.DecodeData(decodeData)
+	case "stribog":
+	default:
+		jsonError(w, http.StatusBadRequest, "unknown algorithm")
+		return
+	}
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	data := new(Data)
+	data.Message = *text
 	m, err := json.Marshal(data)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
