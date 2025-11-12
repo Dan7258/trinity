@@ -6,6 +6,7 @@ import (
 	"trinity/internal/model"
 	"trinity/pkg/kuznechik"
 	"trinity/pkg/rsa"
+	"trinity/pkg/stribog"
 )
 
 type Handler struct {
@@ -53,22 +54,23 @@ func (h *Handler) Encode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var resp []byte
+	var encodeData any
 	switch algorithm {
 	case "kuznechik":
-		resp, err = json.Marshal(kuznechik.EncryptText(data.Message))
+		encodeData = kuznechik.EncryptText(data.Message)
 	case "rsa":
-		var encodeData *rsa.EncryptedData
 		encodeData, err = rsa.EncodeData(data.Message)
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		resp, err = json.Marshal(encodeData)
 	case "stribog":
+		encodeData = stribog.HashingText(data.Message)
 	default:
 		jsonError(w, http.StatusBadRequest, "unknown algorithm")
 		return
 	}
+	resp, err = json.Marshal(encodeData)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -103,7 +105,6 @@ func (h *Handler) Decode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		text, err = rsa.DecodeData(decodeData)
-	case "stribog":
 	default:
 		jsonError(w, http.StatusBadRequest, "unknown algorithm")
 		return
