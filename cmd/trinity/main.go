@@ -22,6 +22,8 @@ func main() {
 
 	mux.HandleFunc("/", h.MainPage)
 	mux.HandleFunc("/static/", h.Static)
+	mux.HandleFunc("POST /encode/rsa", h.EncodeRSA)
+	mux.HandleFunc("POST /decode/rsa", h.DecodeRSA)
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
