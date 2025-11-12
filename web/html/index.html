@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шифрование</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<h1>Шифрование</h1>
+
+<div class="tabs">
+    <div class="tab-button active" data-tab="kuznechik">Кузнечик</div>
+    <div class="tab-button" data-tab="rsa">RSA</div>
+    <div class="tab-button" data-tab="stribog">Стрибог</div>
+</div>
+
+<!-- Кузнечик -->
+<div class="tab-content active" id="kuznechik">
+    <h2>Шифрование Кузнечик</h2>
+    <textarea id="kuznechik-input" placeholder="Введите сообщение для шифрования"></textarea>
+    <button onclick="encrypt('kuznechik')">Зашифровать</button>
+    <div class="output" id="kuznechik-encrypt-output"></div>
+
+    <h2>Расшифровка Кузнечик</h2>
+    <textarea id="kuznechik-decrypt-input" placeholder="Введите зашифрованное сообщение"></textarea>
+    <button onclick="decrypt('kuznechik')">Расшифровать</button>
+    <div class="output" id="kuznechik-decrypt-output"></div>
+</div>
+
+<!-- RSA -->
+<div class="tab-content" id="rsa">
+    <h2>Шифрование RSA</h2>
+    <textarea id="rsa-input" placeholder="Введите сообщение для шифрования"></textarea>
+    <button onclick="encrypt('rsa')">Зашифровать</button>
+    <div class="output" id="rsa-encrypt-output"></div>
+
+    <h2>Расшифровка RSA</h2>
+    <textarea id="rsa-decrypt-input" placeholder="Введите зашифрованное сообщение"></textarea>
+    <button onclick="decrypt('rsa')">Расшифровать</button>
+    <div class="output" id="rsa-decrypt-output"></div>
+</div>
+
+<!-- Стрибог -->
+<div class="tab-content" id="stribog">
+    <h2>Хэширование Стрибог</h2>
+    <textarea id="stribog-input" placeholder="Введите сообщение для хэширования"></textarea>
+    <button onclick="encrypt('stribog')">Хэшировать</button>
+    <div class="output" id="stribog-encrypt-output"></div>
+</div>
+
+<script src="/static/js/script.js"></script>
+</body>
+</html>
