@@ -46,7 +46,7 @@ func (db *PostgresDB) DeleteUser(id uint) error {
 }
 
 // ListUser — список всех пользователей
-func (db *PostgresDB) ListUser() ([]models.User, error) {
+func (db *PostgresDB) ListUsers() ([]models.User, error) {
 	var users []models.User
 	err := db.Conn.Omit("password").Find(&users).Error
 	return users, err
