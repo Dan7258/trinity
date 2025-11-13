@@ -39,7 +39,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
-	json.Marshal(resp)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	getUser, err := h.db.GetUserByLogin(user.Login)
+	getUser, err := h.db.GetUserWithPasswordByLogin(user.Login)
 	if err != nil {
 		jsonError(w, http.StatusNotFound, err.Error())
 		return
@@ -72,5 +72,5 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
-	json.Marshal(resp)
+	json.NewEncoder(w).Encode(resp)
 }

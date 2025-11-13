@@ -24,6 +24,8 @@ func main() {
 	mux.HandleFunc("/static/", h.Static)
 	mux.HandleFunc("POST /encode/{algorithm}", h.Encode)
 	mux.HandleFunc("POST /decode/{algorithm}", h.Decode)
+	mux.HandleFunc("POST /login", h.LoginUser)
+	mux.HandleFunc("POST /register", h.RegisterUser)
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
