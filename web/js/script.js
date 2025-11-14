@@ -223,7 +223,7 @@ async function copyOutput(outputId) {
     }
 }
 
-// === Загрузка истории ===
+// === Загрузка истории (обновлённая версия) ===
 async function loadHistory() {
     const token = localStorage.getItem('token');
     const historyTab = document.getElementById('history-tab');
@@ -261,7 +261,6 @@ async function loadHistory() {
                     });
                 }
             } else if (response.status === 404) {
-                // История для алгоритма не найдена — пропускаем
                 continue;
             } else {
                 console.warn(`Ошибка загрузки истории ${alg}:`, response.status);
@@ -276,16 +275,15 @@ async function loadHistory() {
             return;
         }
 
-        // Формируем таблицу
+        // Формируем таблицу с новым порядком колонок
         let html = `
             <div style="overflow-x: auto;">
                 <table style="width:100%; border-collapse: collapse; font-size: 13px;">
                     <thead>
                         <tr style="background: #f0f0f0; text-align: left;">
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Время</th>
                             <th style="padding: 8px; border-bottom: 2px solid #ddd;">Алгоритм</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Тип</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Данные</th>
+                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Время</th>
+                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Сообщение</th>
                             <th style="padding: 8px; border-bottom: 2px solid #ddd;">Действие</th>
                         </tr>
                     </thead>
@@ -300,35 +298,48 @@ async function loadHistory() {
                 'stribog': 'Стрибог'
             }[item.algorithm] || item.algorithm;
 
-            const type = item.operation === 'encrypt' ? 'Шифрование' :
-                item.operation === 'decrypt' ? 'Расшифровка' :
-                    item.operation === 'hash' ? 'Хэширование' : item.operation;
+            const isEncrypt = item.operation === 'encrypt' || item.operation === 'hash';
+            const canDecrypt = isEncrypt && ['kuznechik', 'rsa'].includes(item.algorithm);
 
-            let dataPreview = '';
-            if (item.operation === 'encrypt' || item.operation === 'hash') {
-                dataPreview = (item.input || '').substring(0, 50) + (item.input?.length > 50 ? '...' : '');
-            } else if (item.operation === 'decrypt') {
-                dataPreview = (item.encrypted_message || '').substring(0, 50) + '...';
+            // Формируем данные для расшифровки
+            let decryptPayload = null;
+            if (canDecrypt) {
+                if (item.algorithm === 'kuznechik') {
+                    decryptPayload = {
+                        encrypted_message: item.encrypted_message,
+                        key: item.key
+                    };
+                } else if (item.algorithm === 'rsa') {
+                    decryptPayload = {
+                        encrypted_message: item.encrypted_message,
+                        d: item.d,
+                        n: item.n
+                    };
+                }
             }
 
-            const jsonToCopy = JSON.stringify(item, null, 2);
+            // Превью сообщения
+            const messagePreview = (item.input || '').substring(0, 60) + (item.input?.length > 60 ? '...' : '');
 
             html += `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px; white-space: nowrap;">${time}</td>
                     <td style="padding: 8px;">${algName}</td>
-                    <td style="padding: 8px;">${type}</td>
-                    <td style="padding: 8px; font-family: monospace; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${dataPreview.replace(/"/g, '&quot;')}">
-                        ${dataPreview || '—'}
+                    <td style="padding: 8px; white-space: nowrap;">${time}</td>
+                    <td style="padding: 8px; font-family: monospace; font-size: 12px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${(item.input || '').replace(/"/g, '&quot;')}">
+                        ${messagePreview || '—'}
                     </td>
                     <td style="padding: 8px;">
-                        <button class="copy-btn" style="font-size: 11px; padding: 4px 8px;" 
-                                onclick='copyText(${JSON.stringify(jsonToCopy)})'>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px;height:12px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            Копия
-                        </button>
+                        ${canDecrypt ? `
+                            <button class="copy-btn" style="font-size: 11px; padding: 4px 8px; background: #007bff; color: white;" 
+                                    onclick='decryptFromHistory("${item.algorithm}", ${JSON.stringify(decryptPayload)})'>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px;height:12px; display:inline; vertical-align:middle;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Расшифровать
+                            </button>
+                        ` : `
+                            <span style="color: #aaa; font-size: 11px;">—</span>
+                        `}
                     </td>
                 </tr>
             `;
@@ -344,6 +355,50 @@ async function loadHistory() {
 
     } catch (error) {
         historyContent.innerHTML = `<p style="color: red;">Ошибка загрузки: ${error.message}</p>`;
+    }
+}
+
+// === Расшифровка из истории ===
+async function decryptFromHistory(algorithm, payload) {
+    if (!payload || !algorithm) return;
+
+    const resultEl = document.getElementById('decrypt-result');
+    const modal = document.getElementById('decrypt-modal');
+    resultEl.textContent = 'Обработка...';
+    modal.style.display = 'flex';
+
+    try {
+        const response = await fetch(`/decode/${algorithm}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            resultEl.innerHTML = `<span style="color: red;">Ошибка сервера: ${response.status} ${text}</span>`;
+            return;
+        }
+
+        const data = await response.json();
+
+        if (response.status >= 400) {
+            resultEl.innerHTML = `<span style="color: red;">Ошибка: ${data.message || 'Неизвестная ошибка'}</span>`;
+            return;
+        }
+
+        const message = data.message || '(пусто)';
+        resultEl.innerText = message;
+
+        // Добавляем кнопку копирования
+        resultEl.innerHTML += `\n\n<button onclick="copyText(this.previousSibling.textContent)" style="margin-top:10px; padding:6px 12px; font-size:12px;">Скопировать результат</button>`;
+
+    } catch (error) {
+        resultEl.innerHTML = `<span style="color: red;">Сетевая ошибка: ${error.message}</span>`;
     }
 }
 
