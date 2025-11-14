@@ -32,6 +32,7 @@ function updateAuthDisplay() {
         authButtons.style.display = 'flex';
         userInfo.style.display = 'none';
     }
+    updateHistoryTab();
 }
 
 // === Кнопки ===
@@ -48,5 +49,22 @@ function logout() {
 window.addEventListener('storage', (e) => {
     if (e.key === 'token') { // ← token
         updateAuthDisplay();
+    }
+});
+
+// === Показ/скрытие вкладки истории ===
+function updateHistoryTab() {
+    const historyTab = document.getElementById('history-tab');
+    const token = localStorage.getItem('token');
+    if (historyTab) {
+        historyTab.style.display = token ? 'block' : 'none';
+    }
+}
+
+// Вызываем при загрузке и обновлении
+document.addEventListener('DOMContentLoaded', updateHistoryTab);
+window.addEventListener('storage', (e) => {
+    if (e.key === 'token') {
+        updateHistoryTab();
     }
 });
