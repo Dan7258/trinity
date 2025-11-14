@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"trinity/pkg/jwt"
 )
@@ -13,9 +14,13 @@ func Auth(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		claims, ok := token.Claims.(jwt.Claims)
-		if !ok {
-			http.Error(w, `{"message": "invalid token claims"}`, http.StatusUnauthorized)
+		if !token.Valid {
+			http.Error(w, `{"message": "bad token"}`, http.StatusUnauthorized)
+			return
+		}
+		claims, err := jwt.ParseClaims(token)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"message": "%v"}`, err), http.StatusUnauthorized)
 			return
 		}
 		ctx := context.WithValue(r.Context(), "user", claims)

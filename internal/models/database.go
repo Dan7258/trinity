@@ -14,4 +14,7 @@ type Model interface {
 	UpdateUser(user *User) error
 	DeleteUser(id uint) error
 	ListUsers() ([]User, error)
+	GetKuznechikListByUserID(userID uint) ([]Kuznechik, error)
+	GetRSAListByUserID(userID uint) ([]RSA, error)
+	GetStribogListByUserID(userID uint) ([]Stribog, error)
 }

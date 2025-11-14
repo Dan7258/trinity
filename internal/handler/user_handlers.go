@@ -61,7 +61,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	claims := jwt.Claims{
 		ID:    getUser.ID,
-		Login: getUser.Login,
+		Login: user.Login,
 		Role:  "user",
 	}
 	resp := new(jwt.JwtResponse)

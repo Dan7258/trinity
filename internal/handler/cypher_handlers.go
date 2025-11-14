@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"trinity/internal/models"
+	"trinity/pkg/jwt"
 	"trinity/pkg/kuznechik"
 	"trinity/pkg/rsa"
 	"trinity/pkg/stribog"
@@ -90,4 +92,40 @@ func (h *Handler) Decode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(m)
+}
+
+func (h *Handler) GetHistory(w http.ResponseWriter, r *http.Request) {
+	algorithm := r.PathValue("algorithm")
+	if algorithm == "" {
+		jsonError(w, http.StatusBadRequest, "algorithm is required")
+		return
+	}
+	var err error
+	data := make([]interface{}, 0)
+	claims := r.Context().Value("user").(jwt.Claims)
+	id := claims.ID
+	switch algorithm {
+	case "kuznechik":
+		kuznechik := make([]models.Kuznechik, 0)
+		kuznechik, err = h.db.GetKuznechikListByUserID(id)
+		data = append(data, kuznechik)
+	case "rsa":
+		rsaList := make([]models.RSA, 0)
+		rsaList, err = h.db.GetRSAListByUserID(id)
+		data = append(data, rsaList)
+	case "stribog":
+		stribogList := make([]models.Stribog, 0)
+		stribogList, err = h.db.GetStribogListByUserID(id)
+		data = append(data, stribogList)
+	default:
+		jsonError(w, http.StatusBadRequest, "unknown algorithm")
+		return
+	}
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(data)
 }

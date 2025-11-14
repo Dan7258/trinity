@@ -18,7 +18,7 @@ func (db *PostgresDB) GetByID(id int) (*models.RSA, error) {
 }
 
 // GetByUserID — все RSA-записи пользователя
-func (db *PostgresDB) GetByUserID(userID int) ([]models.RSA, error) {
+func (db *PostgresDB) GetRSAListByUserID(userID uint) ([]models.RSA, error) {
 	var rsaList []models.RSA
 	err := db.Conn.Where("user_id = ?", userID).Find(&rsaList).Error
 	return rsaList, err

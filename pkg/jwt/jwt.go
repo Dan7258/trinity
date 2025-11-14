@@ -9,11 +9,13 @@ import (
 )
 
 var (
-	NoAuthHeaderError  = errors.New("no authorization header")
-	BadSignMethodError = errors.New("bad sign method")
+	NoAuthHeaderError       = errors.New("no authorization header")
+	BadSignMethodError      = errors.New("bad sign method")
+	NoSecretKeyError        = errors.New("no secret key")
+	InvalidTokenClaimsError = errors.New("invalid token claims")
 )
 
-var secretKey []byte = []byte(os.Getenv("SECRET_KEY"))
+var secretKey []byte
 
 type Claims struct {
 	Login string `json:"login"`
@@ -26,19 +28,38 @@ type JwtResponse struct {
 	Token string `json:"token"`
 }
 
+func Init() error {
+	secretKey = []byte(os.Getenv("SECRET_KEY"))
+	if string(secretKey) == "" {
+		return NoSecretKeyError
+	}
+	return nil
+}
+
 func ParseToken(r *http.Request) (*jwt.Token, error) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		return nil, NoAuthHeaderError
 	}
 	inToken := strings.TrimPrefix(auth, "Bearer ")
-	claims := new(Claims)
-	return jwt.ParseWithClaims(inToken, claims, func(token *jwt.Token) (interface{}, error) {
+	return jwt.Parse(inToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, BadSignMethodError
 		}
 		return secretKey, nil
 	})
+}
+
+func ParseClaims(token *jwt.Token) (Claims, error) {
+	claims := new(Claims)
+	mapClaims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return *claims, InvalidTokenClaimsError
+	}
+	claims.Login = mapClaims["login"].(string)
+	claims.Role = mapClaims["role"].(string)
+	claims.ID = uint(mapClaims["id"].(float64))
+	return *claims, nil
 }
 
 func GenerateToken(claims Claims) (string, error) {

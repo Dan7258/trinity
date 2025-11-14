@@ -18,7 +18,7 @@ func (db *PostgresDB) GetKuznechikByID(id int) (*models.Kuznechik, error) {
 }
 
 // GetKuznechikByUserID — все записи Кузнечик для пользователя
-func (db *PostgresDB) GetKuznechikByUserID(userID int) ([]models.Kuznechik, error) {
+func (db *PostgresDB) GetKuznechikListByUserID(userID uint) ([]models.Kuznechik, error) {
 	var kuzList []models.Kuznechik
 	err := db.Conn.Where("user_id = ?", userID).Find(&kuzList).Error
 	return kuzList, err

@@ -18,7 +18,7 @@ func (db *PostgresDB) GetStribogByID(id int) (*models.Stribog, error) {
 }
 
 // GetStribogByUserID — все хеши Стрибог для пользователя
-func (db *PostgresDB) GetStribogByUserID(userID int) ([]models.Stribog, error) {
+func (db *PostgresDB) GetStribogListByUserID(userID uint) ([]models.Stribog, error) {
 	var hashList []models.Stribog
 	err := db.Conn.Where("user_id = ?", userID).Find(&hashList).Error
 	return hashList, err

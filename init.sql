@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 --  Кузнечик (симметричное шифрование)
 --  EncryptedData { EncryptedMessage, Key }
 -- --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS kuznechik (
+CREATE TABLE IF NOT EXISTS kuznechiks (
                                          id                SERIAL PRIMARY KEY,
                                          user_id           INTEGER NOT NULL
                                              REFERENCES "users"(id) ON DELETE CASCADE,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS kuznechik (
 --  Стрибог (хеш)
 --  EncryptedData { EncryptedMessage }
 -- --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS stribog (
+CREATE TABLE IF NOT EXISTS stribogs (
                                        id                SERIAL PRIMARY KEY,
                                        user_id           INTEGER NOT NULL
                                            REFERENCES "users"(id) ON DELETE CASCADE,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS stribog (
 --  RSA (асимметричное шифрование)
 --  EncryptedData { EncryptedMessage, D, N }
 -- --------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS rsa (
+CREATE TABLE IF NOT EXISTS rsas (
                                    id                SERIAL PRIMARY KEY,
                                    user_id           INTEGER NOT NULL
                                        REFERENCES "users"(id) ON DELETE CASCADE,
@@ -50,6 +50,6 @@ CREATE TABLE IF NOT EXISTS rsa (
 --  Комментарии
 -- ==============================================================
 COMMENT ON TABLE "users"   IS 'Пользователи системы';
-COMMENT ON TABLE kuznechik IS 'Данные, зашифрованные алгоритмом Кузнечик (с ключом)';
-COMMENT ON TABLE stribog   IS 'Хэши, вычисленные по алгоритму Стрибог';
-COMMENT ON TABLE rsa       IS 'Данные, зашифрованные RSA (с закрытым ключом d, n)';
+COMMENT ON TABLE kuznechiks IS 'Данные, зашифрованные алгоритмом Кузнечик (с ключом)';
+COMMENT ON TABLE stribogs   IS 'Хэши, вычисленные по алгоритму Стрибог';
+COMMENT ON TABLE rsas       IS 'Данные, зашифрованные RSA (с закрытым ключом d, n)';

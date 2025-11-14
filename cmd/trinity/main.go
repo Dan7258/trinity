@@ -6,14 +6,21 @@ import (
 	"time"
 	"trinity/internal/config"
 	"trinity/internal/handler"
+	"trinity/internal/middleware"
 	"trinity/internal/repository"
+	"trinity/pkg/jwt"
 )
 
 func main() {
 	mux := http.NewServeMux()
+	authMux := http.NewServeMux()
 	config.Init()
+	err := jwt.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
 	db := &repository.PostgresDB{}
-	err := db.ConnectToDatabase()
+	err = db.ConnectToDatabase()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,6 +33,8 @@ func main() {
 	mux.HandleFunc("POST /decode/{algorithm}", h.Decode)
 	mux.HandleFunc("POST /login", h.LoginUser)
 	mux.HandleFunc("POST /register", h.RegisterUser)
+	mux.Handle("/history/", middleware.Auth(authMux))
+	authMux.HandleFunc("GET /history/{algorithm}", h.GetHistory)
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
