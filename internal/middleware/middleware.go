@@ -27,3 +27,24 @@ func Auth(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+func SoftAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, err := jwt.ParseToken(r)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if !token.Valid {
+			next.ServeHTTP(w, r)
+			return
+		}
+		claims, err := jwt.ParseClaims(token)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx := context.WithValue(r.Context(), "user", claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

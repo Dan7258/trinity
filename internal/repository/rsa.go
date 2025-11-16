@@ -3,7 +3,7 @@ package repository
 import "trinity/internal/models"
 
 // Create — создание записи RSA
-func (db *PostgresDB) Create(rsa *models.RSA) error {
+func (db *PostgresDB) CreateRSA(rsa *models.RSA) error {
 	return db.Conn.Create(rsa).Error
 }
 

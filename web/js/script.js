@@ -48,10 +48,16 @@ async function encrypt(algorithm) {
     const url = `/encode/${algorithm}`;
     const body = JSON.stringify({ message });
 
+    // Получаем токен
+    const token = localStorage.getItem('token');
+
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }) // Добавляем токен, если он есть
+            },
             body: body
         });
 
@@ -223,7 +229,6 @@ async function copyOutput(outputId) {
     }
 }
 
-// === Загрузка истории (обновлённая версия) ===
 async function loadHistory() {
     const token = localStorage.getItem('token');
     const historyTab = document.getElementById('history-tab');
@@ -252,30 +257,26 @@ async function loadHistory() {
                 }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (Array.isArray(data)) {
-                    data.forEach(item => {
-                        item.algorithm = alg;
-                        allHistory.push(item);
-                    });
-                }
-            } else if (response.status === 404) {
-                continue;
-            } else {
-                console.warn(`Ошибка загрузки истории ${alg}:`, response.status);
+            if (!response.ok && response.status !== 404) continue;
+
+            const data = await response.json();
+
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    item.algorithm = alg;
+                    item.operation = alg === 'stribog' ? 'hash' : 'encrypt';
+                    allHistory.push(item);
+                });
             }
         }
 
-        // Сортировка по дате (новые сверху)
-        allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        allHistory.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (allHistory.length === 0) {
             historyContent.innerHTML = '<p style="color: #666;">История пуста.</p>';
             return;
         }
 
-        // Формируем таблицу с новым порядком колонок
         let html = `
             <div style="overflow-x: auto;">
                 <table style="width:100%; border-collapse: collapse; font-size: 13px;">
@@ -283,78 +284,87 @@ async function loadHistory() {
                         <tr style="background: #f0f0f0; text-align: left;">
                             <th style="padding: 8px; border-bottom: 2px solid #ddd;">Алгоритм</th>
                             <th style="padding: 8px; border-bottom: 2px solid #ddd;">Время</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Сообщение</th>
+                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Результат</th>
                             <th style="padding: 8px; border-bottom: 2px solid #ddd;">Действие</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
-        allHistory.forEach((item, index) => {
-            const time = new Date(item.timestamp).toLocaleString('ru-RU');
-            const algName = {
-                'kuznechik': 'Кузнечик',
-                'rsa': 'RSA',
-                'stribog': 'Стрибог'
-            }[item.algorithm] || item.algorithm;
-
-            const isEncrypt = item.operation === 'encrypt' || item.operation === 'hash';
-            const canDecrypt = isEncrypt && ['kuznechik', 'rsa'].includes(item.algorithm);
-
-            // Формируем данные для расшифровки
-            let decryptPayload = null;
-            if (canDecrypt) {
-                if (item.algorithm === 'kuznechik') {
-                    decryptPayload = {
-                        encrypted_message: item.encrypted_message,
-                        key: item.key
-                    };
-                } else if (item.algorithm === 'rsa') {
-                    decryptPayload = {
-                        encrypted_message: item.encrypted_message,
-                        d: item.d,
-                        n: item.n
-                    };
+        allHistory.forEach(item => {
+            // Парсим created_at - он может быть в разных форматах
+            let time = 'Invalid Date';
+            try {
+                if (item.created_at) {
+                    const date = new Date(item.created_at);
+                    if (!isNaN(date.getTime())) {
+                        time = date.toLocaleString('ru-RU');
+                    }
                 }
+            } catch (e) {
+                console.error('Date parse error:', e);
             }
 
-            // Превью сообщения
-            const messagePreview = (item.input || '').substring(0, 60) + (item.input?.length > 60 ? '...' : '');
+            const algName = { kuznechik: 'Кузнечик', rsa: 'RSA', stribog: 'Стрибог' }[item.algorithm];
+
+            const canDecrypt = ['kuznechik', 'rsa'].includes(item.algorithm);
+            let decryptPayload = null;
+            let preview = '';
+
+            if (item.algorithm === 'kuznechik') {
+                // Данные приходят в формате: { encrypted_message: "...", key: "..." }
+                const encMsg = item.encrypted_message || '';
+                const key = item.key || '';
+                preview = encMsg.substring(0, 60) + (encMsg.length > 60 ? '...' : '');
+                if (encMsg && key) {
+                    decryptPayload = {
+                        encrypted_message: encMsg,
+                        key: key
+                    };
+                }
+            } else if (item.algorithm === 'rsa') {
+                // Данные приходят в формате: { encrypted_message: "...", d: "...", n: "..." }
+                const encMsg = item.encrypted_message || '';
+                const d = item.d || '';
+                const n = item.n || '';
+                preview = encMsg.substring(0, 60) + (encMsg.length > 60 ? '...' : '');
+                if (encMsg && d && n) {
+                    decryptPayload = {
+                        encrypted_message: encMsg,
+                        d: d,
+                        n: n
+                    };
+                }
+            } else if (item.algorithm === 'stribog') {
+                // Данные приходят в формате: { hash: "..." }
+                const hash = item.hash || '';
+                preview = hash.substring(0, 60) + (hash.length > 60 ? '...' : '');
+            }
 
             html += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 8px;">${algName}</td>
                     <td style="padding: 8px; white-space: nowrap;">${time}</td>
-                    <td style="padding: 8px; font-family: monospace; font-size: 12px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${(item.input || '').replace(/"/g, '&quot;')}">
-                        ${messagePreview || '—'}
+                    <td style="padding: 8px; font-family: monospace; font-size: 12px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${preview}">
+                        ${preview || '—'}
                     </td>
                     <td style="padding: 8px;">
                         ${canDecrypt ? `
                             <button class="copy-btn" style="font-size: 11px; padding: 4px 8px; background: #007bff; color: white;" 
-                                    onclick='decryptFromHistory("${item.algorithm}", ${JSON.stringify(decryptPayload)})'>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:12px;height:12px; display:inline; vertical-align:middle;">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
+                                    onclick='decryptFromHistory("${item.algorithm}", ${JSON.stringify(decryptPayload).replace(/'/g, "&#39;")})'>
                                 Расшифровать
                             </button>
-                        ` : `
-                            <span style="color: #aaa; font-size: 11px;">—</span>
-                        `}
+                        ` : `<span style="color: #aaa; font-size: 11px;">—</span>`}
                     </td>
                 </tr>
             `;
         });
 
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-
+        html += `</tbody></table></div>`;
         historyContent.innerHTML = html;
 
     } catch (error) {
-        historyContent.innerHTML = `<p style="color: red;">Ошибка загрузки: ${error.message}</p>`;
+        historyContent.innerHTML = `<p style="color: red;">Ошибка: ${error.message}</p>`;
     }
 }
 
@@ -364,41 +374,63 @@ async function decryptFromHistory(algorithm, payload) {
 
     const resultEl = document.getElementById('decrypt-result');
     const modal = document.getElementById('decrypt-modal');
-    resultEl.textContent = 'Обработка...';
+    resultEl.innerHTML = '<em>Обработка... Это может занять некоторое время для RSA.</em>';
     modal.style.display = 'flex';
 
     try {
+        // Увеличиваем таймаут для RSA
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 секунд
+
         const response = await fetch(`/decode/${algorithm}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
+        console.log('Content-Type:', contentType); // Отладка
+        console.log('Response status:', response.status); // Отладка
+
+        let data;
+
+        // Пытаемся распарсить как JSON, даже если Content-Type неправильный
+        try {
             const text = await response.text();
-            resultEl.innerHTML = `<span style="color: red;">Ошибка сервера: ${response.status} ${text}</span>`;
+            console.log('Сырой ответ:', text); // Отладка
+            data = JSON.parse(text);
+            console.log('Распарсенный JSON:', data); // Отладка
+        } catch (e) {
+            console.error('Ошибка парсинга JSON:', e);
+            resultEl.innerHTML = `<span style="color: red;">Ошибка парсинга ответа: ${e.message}</span>`;
             return;
         }
-
-        const data = await response.json();
 
         if (response.status >= 400) {
             resultEl.innerHTML = `<span style="color: red;">Ошибка: ${data.message || 'Неизвестная ошибка'}</span>`;
             return;
         }
 
-        const message = data.message || '(пусто)';
+        const message = data.message || data.decrypted_message || '(пусто)';
+        console.log('Расшифрованное сообщение:', message); // Отладка
         resultEl.innerText = message;
 
         // Добавляем кнопку копирования
-        resultEl.innerHTML += `\n\n<button onclick="copyText(this.previousSibling.textContent)" style="margin-top:10px; padding:6px 12px; font-size:12px;">Скопировать результат</button>`;
+        resultEl.innerHTML += `\n\n<button onclick="copyText('${message.replace(/'/g, "\\'")}'); event.stopPropagation();" style="margin-top:10px; padding:6px 12px; font-size:12px;">Скопировать результат</button>`;
 
     } catch (error) {
-        resultEl.innerHTML = `<span style="color: red;">Сетевая ошибка: ${error.message}</span>`;
+        if (error.name === 'AbortError') {
+            resultEl.innerHTML = `<span style="color: red;">Таймаут: операция заняла слишком много времени (более 60 секунд)</span>`;
+        } else {
+            resultEl.innerHTML = `<span style="color: red;">Сетевая ошибка: ${error.message}</span>`;
+        }
+        console.error('Ошибка расшифровки:', error);
     }
 }
 
@@ -412,6 +444,10 @@ async function copyText(text) {
     }
 }
 
+function closeDecryptModal() {
+    document.getElementById('decrypt-modal').style.display = 'none';
+}
+
 // === Перезагрузка истории при открытии вкладки ===
 document.querySelector('[data-tab="history"]')?.addEventListener('click', () => {
     setTimeout(loadHistory, 100); // небольшая задержка для активации вкладки
@@ -419,8 +455,6 @@ document.querySelector('[data-tab="history"]')?.addEventListener('click', () => 
 
 // === Автозагрузка при старте, если вкладка активна или token есть ===
 document.addEventListener('DOMContentLoaded', () => {
-    // ... существующий код ...
-
     // Проверяем token и показываем вкладку
     const token = localStorage.getItem('token');
     const historyTab = document.getElementById('history-tab');

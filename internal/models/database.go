@@ -8,6 +8,9 @@ type Model interface {
 	GetConn() *gorm.DB
 	ConnectToDatabase() error
 	CreateUser(user *User) error
+	CreateRSA(rsa *RSA) error
+	CreateKuznechik(kuz *Kuznechik) error
+	CreateStribog(stribog *Stribog) error
 	GetUserByID(id uint) (*User, error)
 	GetUserByLogin(login string) (*User, error)
 	GetUserWithPasswordByLogin(login string) (*User, error)

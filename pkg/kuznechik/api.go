@@ -121,6 +121,6 @@ func StringToKey(s string) []uint8 {
 	if err != nil {
 		panic("ошибка парсинга ключа из строки: " + err.Error())
 	}
-	fmt.Println(key)
+	//fmt.Println(key)
 	return key
 }

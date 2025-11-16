@@ -2,6 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"trinity/internal/models"
 	"trinity/pkg/jwt"
@@ -29,15 +31,19 @@ func (h *Handler) Encode(w http.ResponseWriter, r *http.Request) {
 		encodeData = kuznechik.EncryptText(data.Message)
 	case "rsa":
 		encodeData, err = rsa.EncodeData(data.Message)
-		if err != nil {
-			jsonError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
 	case "stribog":
 		encodeData = stribog.HashingText(data.Message)
 	default:
 		jsonError(w, http.StatusBadRequest, "unknown algorithm")
 		return
+	}
+	claims, ok := r.Context().Value("user").(jwt.Claims)
+	if ok {
+		userID := claims.ID
+		err = h.addDataToDatabase(encodeData, userID)
+	}
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
 	}
 	resp, err = json.Marshal(encodeData)
 	if err != nil {
@@ -61,10 +67,6 @@ func (h *Handler) Decode(w http.ResponseWriter, r *http.Request) {
 	case "kuznechik":
 		decodeData := new(kuznechik.EncryptedData)
 		err = json.NewDecoder(r.Body).Decode(decodeData)
-		if err != nil {
-			jsonError(w, http.StatusBadRequest, err.Error())
-			return
-		}
 		text = kuznechik.DecryptText(*decodeData)
 	case "rsa":
 		decodeData := new(rsa.EncryptedData)
@@ -84,14 +86,8 @@ func (h *Handler) Decode(w http.ResponseWriter, r *http.Request) {
 	}
 	data := new(Data)
 	data.Message = *text
-	m, err := json.Marshal(data)
-	if err != nil {
-		jsonError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(m)
+	json.NewEncoder(w).Encode(*data)
 }
 
 func (h *Handler) GetHistory(w http.ResponseWriter, r *http.Request) {
@@ -101,22 +97,33 @@ func (h *Handler) GetHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var err error
-	data := make([]interface{}, 0)
-	claims := r.Context().Value("user").(jwt.Claims)
+	data := make([]any, 0)
+	claims, ok := r.Context().Value("user").(jwt.Claims)
+	if !ok {
+		jsonError(w, http.StatusForbidden, "failed to get user claims")
+		log.Println("failed to get user claims: ", err)
+		return
+	}
 	id := claims.ID
 	switch algorithm {
 	case "kuznechik":
 		kuznechik := make([]models.Kuznechik, 0)
 		kuznechik, err = h.db.GetKuznechikListByUserID(id)
-		data = append(data, kuznechik)
+		for _, k := range kuznechik {
+			data = append(data, k)
+		}
 	case "rsa":
 		rsaList := make([]models.RSA, 0)
 		rsaList, err = h.db.GetRSAListByUserID(id)
-		data = append(data, rsaList)
+		for _, r := range rsaList {
+			data = append(data, r)
+		}
 	case "stribog":
 		stribogList := make([]models.Stribog, 0)
 		stribogList, err = h.db.GetStribogListByUserID(id)
-		data = append(data, stribogList)
+		for _, s := range stribogList {
+			data = append(data, s)
+		}
 	default:
 		jsonError(w, http.StatusBadRequest, "unknown algorithm")
 		return
@@ -128,4 +135,29 @@ func (h *Handler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) addDataToDatabase(data interface{}, userID uint) error {
+	switch d := data.(type) {
+	case *kuznechik.EncryptedData:
+		m := new(models.Kuznechik)
+		m.EncryptedMessage = d.EncryptedMessage
+		m.UserID = int(userID)
+		m.Key = d.Key
+		return h.db.CreateKuznechik(m)
+	case *rsa.EncryptedData:
+		m := new(models.RSA)
+		m.EncryptedMessage = d.EncryptedMessage
+		m.UserID = int(userID)
+		m.D = d.D
+		m.N = d.N
+		return h.db.CreateRSA(m)
+	case *stribog.EncryptedData:
+		m := new(models.Stribog)
+		m.UserID = int(userID)
+		m.Hash = d.EncryptedMessage
+		return h.db.CreateStribog(m)
+	default:
+		return errors.New("unknown data type")
+	}
 }

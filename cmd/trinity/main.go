@@ -14,6 +14,7 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	authMux := http.NewServeMux()
+	softAuthMux := http.NewServeMux()
 	config.Init()
 	err := jwt.Init()
 	if err != nil {
@@ -29,17 +30,18 @@ func main() {
 
 	mux.HandleFunc("/", h.MainPage)
 	mux.HandleFunc("/static/", h.Static)
-	mux.HandleFunc("POST /encode/{algorithm}", h.Encode)
 	mux.HandleFunc("POST /decode/{algorithm}", h.Decode)
 	mux.HandleFunc("POST /login", h.LoginUser)
 	mux.HandleFunc("POST /register", h.RegisterUser)
 	mux.Handle("/history/", middleware.Auth(authMux))
+	mux.Handle("/encode/", middleware.SoftAuth(softAuthMux))
 	authMux.HandleFunc("GET /history/{algorithm}", h.GetHistory)
+	softAuthMux.HandleFunc("POST /encode/{algorithm}", h.Encode)
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 	err = server.ListenAndServe()

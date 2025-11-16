@@ -22,7 +22,6 @@ type LargeNums struct {
 	q *big.Int
 }
 
-
 type EncryptedData struct {
 	EncryptedMessage string `json:"encrypted_message"`
 	D                string `json:"d"`
@@ -83,6 +82,7 @@ func DecodeData(ed *EncryptedData) (*string, error) {
 		return nil, errors.New("failed to decode Message")
 	}
 	message, err := decode(decrypt, em)
+	//log.Printf("message: %s", message)
 	return &message, err
 }
 
