@@ -29,7 +29,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	claims := jwt.Claims{
 		ID:    user.ID,
 		Login: user.Login,
-		Role:  "user",
+		Role:  user.Role,
 	}
 	resp := new(jwt.JwtResponse)
 	resp.Token, err = jwt.GenerateToken(claims)
@@ -62,7 +62,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	claims := jwt.Claims{
 		ID:    getUser.ID,
 		Login: user.Login,
-		Role:  "user",
+		Role:  getUser.Role,
 	}
 	resp := new(jwt.JwtResponse)
 	resp.Token, err = jwt.GenerateToken(claims)

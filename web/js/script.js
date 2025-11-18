@@ -5,7 +5,11 @@ document.querySelectorAll('.tab-button').forEach(button => {
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
         button.classList.add('active');
-        document.getElementById(button.dataset.tab).classList.add('active');
+        const tab = button.dataset.tab;
+        document.getElementById(tab).classList.add('active');
+
+        // Загружаем историю при открытии вкладки
+        loadHistory(tab);
     });
 });
 
@@ -47,8 +51,6 @@ async function encrypt(algorithm) {
 
     const url = `/encode/${algorithm}`;
     const body = JSON.stringify({ message });
-
-    // Получаем токен
     const token = localStorage.getItem('token');
 
     try {
@@ -56,7 +58,7 @@ async function encrypt(algorithm) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` }) // Добавляем токен, если он есть
+                ...(token && { 'Authorization': `Bearer ${token}` })
             },
             body: body
         });
@@ -101,6 +103,11 @@ async function encrypt(algorithm) {
                 output.dataset.rawJson = jsonToCopy;
                 output.innerText = hash;
             }
+
+            // Перезагружаем историю после успешной операции
+            if (token) {
+                setTimeout(() => loadHistory(algorithm), 500);
+            }
         });
 
     } catch (error) {
@@ -108,7 +115,7 @@ async function encrypt(algorithm) {
     }
 }
 
-// === Расшифровка (только kuznechik и rsa) ===
+// === Расшифровка ===
 async function decrypt(algorithm) {
     const input = document.getElementById(`${algorithm}-decrypt-input`);
     const output = document.getElementById(`${algorithm}-decrypt-output`);
@@ -188,7 +195,7 @@ async function decrypt(algorithm) {
     }
 }
 
-// === Копирование результата в буфер обмена ===
+// === Копирование результата ===
 async function copyOutput(outputId) {
     const output = document.getElementById(outputId);
     if (!output) return;
@@ -229,70 +236,59 @@ async function copyOutput(outputId) {
     }
 }
 
-async function loadHistory() {
+// === Загрузка истории для конкретного алгоритма ===
+async function loadHistory(algorithm) {
     const token = localStorage.getItem('token');
-    const historyTab = document.getElementById('history-tab');
-    const historyContent = document.getElementById('history-content');
+    const historySection = document.getElementById(`${algorithm}-history-section`);
+    const historyContent = document.getElementById(`${algorithm}-history-content`);
 
-    if (!token) {
-        if (historyTab) historyTab.style.display = 'none';
+    if (!token || !historySection || !historyContent) {
+        if (historySection) historySection.style.display = 'none';
         return;
-    } else {
-        if (historyTab) historyTab.style.display = 'block';
     }
 
-    if (!historyContent) return;
-
+    historySection.style.display = 'block';
     historyContent.innerHTML = '<p><em>Загрузка истории...</em></p>';
 
-    const algorithms = ['kuznechik', 'rsa', 'stribog'];
-    let allHistory = [];
-
     try {
-        for (const alg of algorithms) {
-            const response = await fetch(`/history/${alg}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok && response.status !== 404) continue;
-
-            const data = await response.json();
-
-            if (Array.isArray(data)) {
-                data.forEach(item => {
-                    item.algorithm = alg;
-                    item.operation = alg === 'stribog' ? 'hash' : 'encrypt';
-                    allHistory.push(item);
-                });
+        const response = await fetch(`/history/${algorithm}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                historyContent.innerHTML = '<p style="color: #666;">История пуста.</p>';
+                return;
+            }
+            throw new Error(`HTTP ${response.status}`);
         }
 
-        allHistory.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const data = await response.json();
 
-        if (allHistory.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
             historyContent.innerHTML = '<p style="color: #666;">История пуста.</p>';
             return;
         }
 
+        // Сортируем по времени (новые первые)
+        data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
         let html = `
-            <div style="overflow-x: auto;">
-                <table style="width:100%; border-collapse: collapse; font-size: 13px;">
-                    <thead>
-                        <tr style="background: #f0f0f0; text-align: left;">
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Алгоритм</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Время</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Результат</th>
-                            <th style="padding: 8px; border-bottom: 2px solid #ddd;">Действие</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th style="width: 100%; min-width: 400px;">Результат</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
 
-        allHistory.forEach(item => {
-            // Парсим created_at - он может быть в разных форматах
+        data.forEach(item => {
             let time = 'Invalid Date';
             try {
                 if (item.created_at) {
@@ -305,53 +301,47 @@ async function loadHistory() {
                 console.error('Date parse error:', e);
             }
 
-            const algName = { kuznechik: 'Кузнечик', rsa: 'RSA', stribog: 'Стрибог' }[item.algorithm];
-
-            const canDecrypt = ['kuznechik', 'rsa'].includes(item.algorithm);
+            const canDecrypt = ['kuznechik', 'rsa'].includes(algorithm);
             let decryptPayload = null;
+            let fullText = '';
             let preview = '';
 
-            if (item.algorithm === 'kuznechik') {
-                // Данные приходят в формате: { encrypted_message: "...", key: "..." }
+            if (algorithm === 'kuznechik') {
                 const encMsg = item.encrypted_message || '';
                 const key = item.key || '';
+                fullText = `Шифротекст: ${encMsg}\nКлюч: ${key}`;
                 preview = encMsg.substring(0, 60) + (encMsg.length > 60 ? '...' : '');
                 if (encMsg && key) {
-                    decryptPayload = {
-                        encrypted_message: encMsg,
-                        key: key
-                    };
+                    decryptPayload = { encrypted_message: encMsg, key: key };
                 }
-            } else if (item.algorithm === 'rsa') {
-                // Данные приходят в формате: { encrypted_message: "...", d: "...", n: "..." }
+            } else if (algorithm === 'rsa') {
                 const encMsg = item.encrypted_message || '';
                 const d = item.d || '';
                 const n = item.n || '';
+                fullText = `Зашифровано: ${encMsg}\nd: ${d}\nn: ${n}`;
                 preview = encMsg.substring(0, 60) + (encMsg.length > 60 ? '...' : '');
                 if (encMsg && d && n) {
-                    decryptPayload = {
-                        encrypted_message: encMsg,
-                        d: d,
-                        n: n
-                    };
+                    decryptPayload = { encrypted_message: encMsg, d: d, n: n };
                 }
-            } else if (item.algorithm === 'stribog') {
-                // Данные приходят в формате: { hash: "..." }
-                const hash = item.hash || '';
-                preview = hash.substring(0, 60) + (hash.length > 60 ? '...' : '');
+            } else if (algorithm === 'stribog') {
+                fullText = item.encrypted_message || '';
+                preview = fullText.substring(0, 60) + (fullText.length > 60 ? '...' : '');
             }
 
+            // Кликабельная ячейка — раскрывает полный текст
             html += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px;">${algName}</td>
-                    <td style="padding: 8px; white-space: nowrap;">${time}</td>
-                    <td style="padding: 8px; font-family: monospace; font-size: 12px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${preview}">
-                        ${preview || '—'}
+                <tr>
+                    <td style="white-space: nowrap;">${time}</td>
+                    <td class="full-text-cell" title="Кликните, чтобы скопировать полный результат">
+                        <div class="text-preview">${preview || '—'}</div>
+                        <div class="text-full" style="display: none; margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 12px;">
+                            ${fullText || '—'}
+                        </div>
                     </td>
-                    <td style="padding: 8px;">
-                        ${canDecrypt ? `
+                    <td>
+                        ${canDecrypt && decryptPayload ? `
                             <button class="copy-btn" style="font-size: 11px; padding: 4px 8px; background: #007bff; color: white;" 
-                                    onclick='decryptFromHistory("${item.algorithm}", ${JSON.stringify(decryptPayload).replace(/'/g, "&#39;")})'>
+                                    onclick='decryptFromHistory("${algorithm}", ${JSON.stringify(decryptPayload).replace(/'/g, "&#39;")})'>
                                 Расшифровать
                             </button>
                         ` : `<span style="color: #aaa; font-size: 11px;">—</span>`}
@@ -360,11 +350,37 @@ async function loadHistory() {
             `;
         });
 
-        html += `</tbody></table></div>`;
+        html += `</tbody></table>`;
         historyContent.innerHTML = html;
 
+        // Добавляем обработчик клика по ячейкам с полным текстом
+        document.querySelectorAll('.full-text-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                const full = this.querySelector('.text-full');
+                const preview = this.querySelector('.text-preview');
+                if (full.style.display === 'none') {
+                    full.style.display = 'block';
+                    preview.style.display = 'none';
+                } else {
+                    full.style.display = 'none';
+                    preview.style.display = 'block';
+                }
+            });
+
+            // Двойной клик — копирует полный текст
+            cell.addEventListener('dblclick', function(e) {
+                e.stopPropagation();
+                const text = this.querySelector('.text-full').innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Полный результат скопирован в буфер обмена!');
+                }).catch(() => {
+                    alert('Не удалось скопировать');
+                });
+            });
+        });
+
     } catch (error) {
-        historyContent.innerHTML = `<p style="color: red;">Ошибка: ${error.message}</p>`;
+        historyContent.innerHTML = `<p style="color: red;">Ошибка загрузки: ${error.message}</p>`;
     }
 }
 
@@ -378,9 +394,8 @@ async function decryptFromHistory(algorithm, payload) {
     modal.style.display = 'flex';
 
     try {
-        // Увеличиваем таймаут для RSA
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 секунд
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         const response = await fetch(`/decode/${algorithm}`, {
             method: 'POST',
@@ -394,18 +409,10 @@ async function decryptFromHistory(algorithm, payload) {
 
         clearTimeout(timeoutId);
 
-        const contentType = response.headers.get("content-type");
-        console.log('Content-Type:', contentType); // Отладка
-        console.log('Response status:', response.status); // Отладка
-
         let data;
-
-        // Пытаемся распарсить как JSON, даже если Content-Type неправильный
         try {
             const text = await response.text();
-            console.log('Сырой ответ:', text); // Отладка
             data = JSON.parse(text);
-            console.log('Распарсенный JSON:', data); // Отладка
         } catch (e) {
             console.error('Ошибка парсинга JSON:', e);
             resultEl.innerHTML = `<span style="color: red;">Ошибка парсинга ответа: ${e.message}</span>`;
@@ -418,11 +425,7 @@ async function decryptFromHistory(algorithm, payload) {
         }
 
         const message = data.message || data.decrypted_message || '(пусто)';
-        console.log('Расшифрованное сообщение:', message); // Отладка
         resultEl.innerText = message;
-
-        // Добавляем кнопку копирования
-        resultEl.innerHTML += `\n\n<button onclick="copyText('${message.replace(/'/g, "\\'")}'); event.stopPropagation();" style="margin-top:10px; padding:6px 12px; font-size:12px;">Скопировать результат</button>`;
 
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -434,8 +437,21 @@ async function decryptFromHistory(algorithm, payload) {
     }
 }
 
-// === Копирование произвольного текста (для истории) ===
-async function copyText(text) {
+// === Закрытие модального окна ===
+function closeDecryptModal() {
+    document.getElementById('decrypt-modal').style.display = 'none';
+}
+
+// === Копирование результата из модального окна ===
+async function copyModalResult() {
+    const resultEl = document.getElementById('decrypt-result');
+    const text = resultEl.innerText || resultEl.textContent || '';
+
+    if (!text.trim()) {
+        alert('Нет данных для копирования');
+        return;
+    }
+
     try {
         await navigator.clipboard.writeText(text);
         alert('Скопировано в буфер обмена!');
@@ -444,39 +460,31 @@ async function copyText(text) {
     }
 }
 
-function closeDecryptModal() {
-    document.getElementById('decrypt-modal').style.display = 'none';
-}
-
-// === Перезагрузка истории при открытии вкладки ===
-document.querySelector('[data-tab="history"]')?.addEventListener('click', () => {
-    setTimeout(loadHistory, 100); // небольшая задержка для активации вкладки
-});
-
-// === Автозагрузка при старте, если вкладка активна или token есть ===
+// === Инициализация при загрузке страницы ===
 document.addEventListener('DOMContentLoaded', () => {
-    // Проверяем token и показываем вкладку
     const token = localStorage.getItem('token');
-    const historyTab = document.getElementById('history-tab');
-    if (historyTab) {
-        historyTab.style.display = token ? 'block' : 'none';
-    }
 
-    // Если открыта вкладка истории — загружаем
-    if (document.querySelector('.tab-button.active')?.dataset.tab === 'history') {
-        loadHistory();
+    // Загружаем историю для активной вкладки, если пользователь авторизован
+    if (token) {
+        const activeTab = document.querySelector('.tab-button.active');
+        if (activeTab) {
+            loadHistory(activeTab.dataset.tab);
+        }
     }
 });
 
-// === Обновление при изменении token (через storage) ===
+// === Обновление при изменении token в localStorage ===
 window.addEventListener('storage', (e) => {
     if (e.key === 'token') {
-        const historyTab = document.getElementById('history-tab');
-        if (historyTab) {
-            historyTab.style.display = e.newValue ? 'block' : 'none';
-        }
-        if (e.newValue && document.getElementById('history').classList.contains('active')) {
-            loadHistory();
+        if (e.newValue) {
+            const activeTab = document.querySelector('.tab-button.active');
+            if (activeTab) {
+                loadHistory(activeTab.dataset.tab);
+            }
+        } else {
+            document.querySelectorAll('.history-section').forEach(section => {
+                section.style.display = 'none';
+            });
         }
     }
 });
