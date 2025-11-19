@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"trinity/internal/models"
 	"trinity/pkg/hash"
 	"trinity/pkg/jwt"
@@ -73,4 +74,30 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	claims := r.Context().Value("user").(jwt.Claims)
+	idString := r.PathValue("id")
+	id, _ := strconv.Atoi(idString)
+	var err error
+	if claims.Role != "user" {
+		if idString == "" {
+			err = h.db.DeleteUser(claims.ID)
+		} else {
+			err = h.db.DeleteUser(uint(id))
+		}
+	} else {
+		if idString != "" && claims.ID != uint(id) {
+			jsonError(w, http.StatusForbidden, "permission denied")
+			return
+		}
+		err = h.db.DeleteUser(claims.ID)
+	}
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 }

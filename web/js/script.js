@@ -251,7 +251,7 @@ async function loadHistory(algorithm) {
     historyContent.innerHTML = '<p><em>Загрузка истории...</em></p>';
 
     try {
-        const response = await fetch(`/history/${algorithm}`, {
+        const response = await fetch(`/api/history/${algorithm}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

@@ -8,6 +8,15 @@
 </head>
 <body>
 <div id="header-container"></div>
+<!-- Кнопка удаления аккаунта (видна только авторизованным) -->
+<div id="delete-account-section" style="display: none; margin: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+    <p style="margin: 0 0 10px 0; color: #856404;">
+        <strong>Опасная зона:</strong> Удаление аккаунта необратимо!
+    </p>
+    <button onclick="showDeleteConfirmation()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        Удалить аккаунт
+    </button>
+</div>
 
 <div class="tabs">
     <div class="tab-button active" data-tab="kuznechik">Кузнечик</div>
@@ -112,7 +121,27 @@
     </div>
 </div>
 
+<!-- Модальное окно подтверждения удаления -->
+<div id="delete-confirmation-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3 style="color: #dc3545;">Подтверждение удаления</h3>
+        <p>Вы уверены, что хотите удалить свой аккаунт?</p>
+        <p style="color: #dc3545; font-weight: bold;">Это действие необратимо!</p>
+        <p style="font-size: 14px; color: #666;">Все ваши данные и история операций будут безвозвратно удалены.</p>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="closeDeleteConfirmation()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                Отмена
+            </button>
+            <button onclick="deleteAccount()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                Удалить навсегда
+            </button>
+        </div>
+    </div>
+</div>
+
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/script.js"></script>
+<script src="/static/js/delete-account.js"></script>
 </body>
 </html>
