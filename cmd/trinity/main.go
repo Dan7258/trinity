@@ -39,6 +39,7 @@ func main() {
 	mux.Handle("/admin/", middleware.Auth(middleware.AdminAuth(adminMux)))
 	authMux.HandleFunc("GET /api/history/{algorithm}", h.GetHistory)
 	authMux.HandleFunc("DELETE /api/delete-user", h.DeleteUser)
+	authMux.HandleFunc("DELETE /api/delete-user/{id}", h.DeleteUser)
 	softAuthMux.HandleFunc("POST /encode/{algorithm}", h.Encode)
 	adminMux.HandleFunc("GET /admin/history/{algorithm}/{login}", h.GetHistoryByLogin)
 	adminMux.HandleFunc("GET /admin/history/", h.GetHistoryPage)

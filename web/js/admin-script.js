@@ -2,11 +2,11 @@
 
 let currentToken = null;
 let currentLogin = '';
+let userIdToDelete = null;
 
-// Извлекаем токен из URL
-function getTokenFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('token');
+// Извлекаем токен из localStorage
+function getToken() {
+    return localStorage.getItem('token');
 }
 
 async function loadAdminHistory() {
@@ -16,14 +16,14 @@ async function loadAdminHistory() {
         return;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) {
         document.getElementById('admin-status').innerHTML =
-            '<span style="color:red;">Сессия истекла. <a href="/">Войдите заново</a></span>';
+            '<span style="color:red;">Сессия истекла. <a href="/login.html">Войдите заново</a></span>';
         return;
     }
 
-    currentToken = token;  // можно даже не хранить, просто использовать localStorage.getItem('token')
+    currentToken = token;
     currentLogin = login;
 
     const statusEl = document.getElementById('admin-status');
@@ -65,7 +65,7 @@ async function fetchAdminHistory(algorithm, login) {
     }
 }
 
-// Рендер истории (почти как в script.js)
+// Рендер истории
 function renderAdminHistory(data, algorithm) {
     const contentEl = document.getElementById(`${algorithm}-history-content`);
     if (!Array.isArray(data) || data.length === 0) {
@@ -122,7 +122,6 @@ function renderAdminHistory(data, algorithm) {
     html += `</tbody></table>`;
     contentEl.innerHTML = html;
 
-    // Те же обработчики кликов, что и в обычной истории
     document.querySelectorAll('.full-text-cell').forEach(cell => {
         cell.addEventListener('click', function() {
             const full = this.querySelector('.text-full');
@@ -136,6 +135,111 @@ function renderAdminHistory(data, algorithm) {
             alert('Скопировано!');
         });
     });
+}
+
+// === УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ===
+
+// Показать модальное окно подтверждения
+function showAdminDeleteConfirmation() {
+    const userIdInput = document.getElementById('admin-delete-user-id');
+    const userId = userIdInput.value.trim();
+
+    if (!userId || isNaN(userId) || parseInt(userId) <= 0) {
+        alert('Введите корректный ID пользователя');
+        return;
+    }
+
+    const token = getToken();
+    if (!token) {
+        alert('Сессия истекла. Войдите заново.');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    userIdToDelete = parseInt(userId);
+    document.getElementById('confirm-user-id').textContent = userIdToDelete;
+    document.getElementById('admin-delete-confirmation-modal').style.display = 'flex';
+}
+
+// Закрыть модальное окно
+function closeAdminDeleteConfirmation() {
+    document.getElementById('admin-delete-confirmation-modal').style.display = 'none';
+    userIdToDelete = null;
+}
+
+// Выполнить удаление
+async function executeAdminDeleteUser() {
+    if (!userIdToDelete) {
+        alert('ID пользователя не указан');
+        closeAdminDeleteConfirmation();
+        return;
+    }
+
+    const token = getToken();
+    if (!token) {
+        alert('Сессия истекла');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const statusEl = document.getElementById('admin-delete-status');
+    statusEl.textContent = 'Удаление...';
+    statusEl.style.color = '#666';
+
+    try {
+        const response = await fetch(`/api/delete-user/${userIdToDelete}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            statusEl.textContent = `Пользователь с ID ${userIdToDelete} успешно удалён`;
+            statusEl.style.color = 'green';
+
+            // Очищаем поле ввода
+            document.getElementById('admin-delete-user-id').value = '';
+
+            // Закрываем модалку
+            closeAdminDeleteConfirmation();
+
+            // Очищаем статус через 3 секунды
+            setTimeout(() => {
+                statusEl.textContent = '';
+            }, 3000);
+
+        } else if (response.status === 401) {
+            statusEl.textContent = 'Сессия истекла';
+            statusEl.style.color = 'red';
+            setTimeout(() => {
+                window.location.href = '/login.html';
+            }, 1500);
+
+        } else if (response.status === 403) {
+            statusEl.textContent = 'Доступ запрещён (недостаточно прав)';
+            statusEl.style.color = 'red';
+            closeAdminDeleteConfirmation();
+
+        } else if (response.status === 404) {
+            statusEl.textContent = 'Пользователь не найден';
+            statusEl.style.color = 'red';
+            closeAdminDeleteConfirmation();
+
+        } else {
+            const data = await response.json().catch(() => ({}));
+            statusEl.textContent = `Ошибка: ${data.message || 'Не удалось удалить пользователя'}`;
+            statusEl.style.color = 'red';
+            closeAdminDeleteConfirmation();
+        }
+
+    } catch (err) {
+        console.error('Ошибка удаления:', err);
+        statusEl.textContent = `Сетевая ошибка: ${err.message}`;
+        statusEl.style.color = 'red';
+        closeAdminDeleteConfirmation();
+    }
 }
 
 // Переключение вкладок
@@ -152,13 +256,32 @@ document.querySelectorAll('.tab-button').forEach(btn => {
     });
 });
 
-// Функции модалки и расшифровки — полностью скопированы из script.js
-function decryptFromHistory(algorithm, payload) { /* вставьте сюда ту же функцию из script.js */ }
-function closeDecryptModal() { document.getElementById('decrypt-modal').style.display = 'none'; }
+// Функции модалки расшифровки
+function decryptFromHistory(algorithm, payload) {
+    // Используем функцию из script.js
+    if (typeof window.decryptFromHistory === 'function') {
+        window.decryptFromHistory(algorithm, payload);
+    }
+}
+
+function closeDecryptModal() {
+    document.getElementById('decrypt-modal').style.display = 'none';
+}
+
 async function copyModalResult() {
     const text = document.getElementById('decrypt-result').innerText;
     await navigator.clipboard.writeText(text);
     alert('Скопировано!');
 }
 
-// Вставьте сюда функцию decryptFromHistory() из вашего script.js (полностью)
+// Закрытие модального окна по клику вне его
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('admin-delete-confirmation-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeAdminDeleteConfirmation();
+            }
+        });
+    }
+});

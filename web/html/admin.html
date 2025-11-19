@@ -16,6 +16,23 @@
   <p id="admin-status" style="margin-top: 10px; color: #666;"></p>
 </div>
 
+<!-- Новая секция для удаления пользователя -->
+<div class="admin-controls" style="margin: 20px; padding: 15px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
+  <h2 style="color: #856404;">⚠️ Удаление пользователя</h2>
+  <p style="color: #856404; margin-bottom: 15px;">
+    <strong>Внимание!</strong> Удаление пользователя необратимо. Все данные будут потеряны.
+  </p>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <input type="number" id="admin-delete-user-id" placeholder="Введите ID пользователя"
+           style="padding: 10px; width: 250px; font-size: 16px; border: 1px solid #ffc107;">
+    <button onclick="showAdminDeleteConfirmation()"
+            style="padding: 10px 20px; font-size: 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+      Удалить пользователя
+    </button>
+  </div>
+  <p id="admin-delete-status" style="margin-top: 10px; color: #666;"></p>
+</div>
+
 <div class="tabs">
   <div class="tab-button active" data-tab="kuznechik">Кузнечик</div>
   <div class="tab-button" data-tab="rsa">RSA</div>
@@ -44,7 +61,7 @@
   </div>
 </div>
 
-<!-- Модальное окно для расшифровки (то же самое) -->
+<!-- Модальное окно для расшифровки -->
 <div id="decrypt-modal" class="modal">
   <div class="modal-content">
     <h3>Результат расшифровки</h3>
@@ -54,9 +71,31 @@
   </div>
 </div>
 
+<!-- Модальное окно подтверждения удаления -->
+<div id="admin-delete-confirmation-modal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 450px;">
+    <h3 style="color: #dc3545;">⚠️ Подтверждение удаления</h3>
+    <p style="font-size: 16px;">Вы уверены, что хотите удалить пользователя с ID: <strong id="confirm-user-id"></strong>?</p>
+    <p style="color: #dc3545; font-weight: bold;">Это действие необратимо!</p>
+    <p style="font-size: 14px; color: #666;">
+      Все данные пользователя, включая историю операций, будут безвозвратно удалены.
+    </p>
+
+    <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+      <button onclick="closeAdminDeleteConfirmation()"
+              style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        Отмена
+      </button>
+      <button onclick="executeAdminDeleteUser()"
+              style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+        Удалить навсегда
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/admin-script.js"></script>
 <script src="/static/js/script.js"></script>
-
 </body>
 </html>

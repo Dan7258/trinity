@@ -84,6 +84,8 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	if claims.Role != "user" {
 		if idString == "" {
 			err = h.db.DeleteUser(claims.ID)
+		} else if uint(id) == claims.ID {
+			jsonError(w, http.StatusTeapot, "Самый умный!? Удаляй себя с главной страницы!")
 		} else {
 			err = h.db.DeleteUser(uint(id))
 		}
