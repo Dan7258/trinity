@@ -48,3 +48,19 @@ func SoftAuth(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+func AdminAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := r.Context().Value("user").(jwt.Claims)
+		if !ok {
+			http.Error(w, "failed to get user claimss", http.StatusUnauthorized)
+			return
+		}
+		if claims.Role != "admin" {
+			http.Error(w, "permission denied", http.StatusForbidden)
+			return
+		}
+		//log.Printf("id: %d \n role: %s \n login: %s \n", claims.ID, claims.Role, claims.Login)
+		next.ServeHTTP(w, r)
+	})
+}

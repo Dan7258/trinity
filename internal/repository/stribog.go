@@ -24,6 +24,12 @@ func (db *PostgresDB) GetStribogListByUserID(userID uint) ([]models.Stribog, err
 	return hashList, err
 }
 
+func (db *PostgresDB) GetStribogListByLogin(login string) ([]models.Stribog, error) {
+	var user *models.User
+	err := db.Conn.Preload("Stribogs").Omit("password").Where("login = ?", login).First(&user).Error
+	return user.Stribogs, err
+}
+
 // DeleteStribog — удаление по ID
 func (db *PostgresDB) DeleteStribog(id int) error {
 	return db.Conn.Delete(&models.Stribog{}, id).Error

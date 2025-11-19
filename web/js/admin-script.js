@@ -1,0 +1,163 @@
+// static/js/admin-script.js
+
+let currentToken = null;
+let currentLogin = '';
+
+// Извлекаем токен из URL
+function getTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('token');
+}
+
+// Загрузка истории по логину и алгоритму
+async function loadAdminHistory() {
+    const login = document.getElementById('admin-login-input').value.trim();
+    if (!login) {
+        alert('Введите логин пользователя');
+        return;
+    }
+
+    const statusEl = document.getElementById('admin-status');
+    statusEl.textContent = 'Загрузка...';
+
+    currentLogin = login;
+    currentToken = getTokenFromUrl();
+
+    if (!currentToken) {
+        statusEl.innerHTML = '<span style="color:red;">Токен не найден. Перейдите через админ-панель.</span>';
+        return;
+    }
+
+    const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+    await fetchAdminHistory(activeTab, login);
+}
+
+// Универсальная загрузка истории для админа
+async function fetchAdminHistory(algorithm, login) {
+    const contentEl = document.getElementById(`${algorithm}-history-content`);
+    contentEl.innerHTML = '<p><em>Загрузка...</em></p>';
+
+    try {
+        const response = await fetch(`/admin/history/${algorithm}/${encodeURIComponent(login)}`, {
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                contentEl.innerHTML = '<p style="color:red;">Доступ запрещён (недостаточно прав)</p>';
+            } else if (response.status === 404) {
+                contentEl.innerHTML = '<p style="color:#666;">Пользователь не найден или история пуста</p>';
+            } else {
+                contentEl.innerHTML = `<p style="color:red;">Ошибка: ${response.status}</p>`;
+            }
+            return;
+        }
+
+        const data = await response.json();
+        renderAdminHistory(data, algorithm);
+
+    } catch (err) {
+        contentEl.innerHTML = `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
+    }
+}
+
+// Рендер истории (почти как в script.js)
+function renderAdminHistory(data, algorithm) {
+    const contentEl = document.getElementById(`${algorithm}-history-content`);
+    if (!Array.isArray(data) || data.length === 0) {
+        contentEl.innerHTML = '<p style="color:#666;">История пуста</p>';
+        return;
+    }
+
+    data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    let html = `<table class="history-table"><thead><tr><th>Время</th><th>Результат</th><th>Действие</th></tr></thead><tbody>`;
+
+    data.forEach(item => {
+        const time = new Date(item.created_at).toLocaleString('ru-RU');
+        let preview = '', fullText = '', decryptPayload = null;
+
+        if (algorithm === 'kuznechik') {
+            const enc = item.encrypted_message || '';
+            const key = item.key || '';
+            fullText = `Шифротекст: ${enc}\nКлюч: ${key}`;
+            preview = enc.substring(0, 60) + (enc.length > 60 ? '...' : '');
+            if (enc && key) decryptPayload = { encrypted_message: enc, key };
+        } else if (algorithm === 'rsa') {
+            const enc = item.encrypted_message || '';
+            const d = item.d || '';
+            const n = item.n || '';
+            fullText = `Зашифровано: ${enc}\nd: ${d}\nn: ${n}`;
+            preview = enc.substring(0, 60) + (enc.length > 60 ? '...' : '');
+            if (enc && d && n) decryptPayload = { encrypted_message: enc, d, n };
+        } else if (algorithm === 'stribog') {
+            fullText = item.encrypted_message || '';
+            preview = fullText.substring(0, 60) + (fullText.length > 60 ? '...' : '');
+        }
+
+        html += `
+            <tr>
+                <td style="white-space: nowrap;">${time}</td>
+                <td class="full-text-cell" title="Клик — показать, двойной клик — копировать">
+                    <div class="text-preview">${preview || '—'}</div>
+                    <div class="text-full" style="display:none; margin-top:8px; padding:8px; background:#f8f9fa; border-radius:4px; white-space:pre-wrap; word-break:break-all; font-family:monospace; font-size:12px;">
+                        ${fullText}
+                    </div>
+                </td>
+                <td>
+                    ${decryptPayload ? `
+                        <button class="copy-btn" style="font-size:11px;padding:4px 8px;" 
+                                onclick='decryptFromHistory("${algorithm}", ${JSON.stringify(decryptPayload).replace(/'/g, "&#39;")})'>
+                            Расшифровать
+                        </button>
+                    ` : '—'}
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    contentEl.innerHTML = html;
+
+    // Те же обработчики кликов, что и в обычной истории
+    document.querySelectorAll('.full-text-cell').forEach(cell => {
+        cell.addEventListener('click', function() {
+            const full = this.querySelector('.text-full');
+            const prev = this.querySelector('.text-preview');
+            full.style.display = full.style.display === 'none' ? 'block' : 'none';
+            prev.style.display = prev.style.display === 'none' ? 'block' : 'none';
+        });
+        cell.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            navigator.clipboard.writeText(this.querySelector('.text-full').innerText);
+            alert('Скопировано!');
+        });
+    });
+}
+
+// Переключение вкладок
+document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+
+        if (currentLogin) {
+            fetchAdminHistory(btn.dataset.tab, currentLogin);
+        }
+    });
+});
+
+// Функции модалки и расшифровки — полностью скопированы из script.js
+function decryptFromHistory(algorithm, payload) { /* вставьте сюда ту же функцию из script.js */ }
+function closeDecryptModal() { document.getElementById('decrypt-modal').style.display = 'none'; }
+async function copyModalResult() {
+    const text = document.getElementById('decrypt-result').innerText;
+    await navigator.clipboard.writeText(text);
+    alert('Скопировано!');
+}
+
+// Вставьте сюда функцию decryptFromHistory() из вашего script.js (полностью)

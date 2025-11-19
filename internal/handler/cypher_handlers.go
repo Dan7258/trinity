@@ -142,22 +142,67 @@ func (h *Handler) addDataToDatabase(data interface{}, userID uint) error {
 	case *kuznechik.EncryptedData:
 		m := new(models.Kuznechik)
 		m.EncryptedMessage = d.EncryptedMessage
-		m.UserID = int(userID)
+		m.UserID = userID
 		m.Key = d.Key
 		return h.db.CreateKuznechik(m)
 	case *rsa.EncryptedData:
 		m := new(models.RSA)
 		m.EncryptedMessage = d.EncryptedMessage
-		m.UserID = int(userID)
+		m.UserID = userID
 		m.D = d.D
 		m.N = d.N
 		return h.db.CreateRSA(m)
 	case *stribog.EncryptedData:
 		m := new(models.Stribog)
-		m.UserID = int(userID)
+		m.UserID = userID
 		m.Hash = d.EncryptedMessage
 		return h.db.CreateStribog(m)
 	default:
 		return errors.New("unknown data type")
 	}
+}
+
+func (h *Handler) GetHistoryByLogin(w http.ResponseWriter, r *http.Request) {
+	algorithm := r.PathValue("algorithm")
+	if algorithm == "" {
+		jsonError(w, http.StatusBadRequest, "algorithm is required")
+		return
+	}
+	login := r.PathValue("login")
+	if login == "" {
+		jsonError(w, http.StatusBadRequest, "login is required")
+		return
+	}
+	var err error
+	data := make([]any, 0)
+	switch algorithm {
+	case "kuznechik":
+		kuznechik := make([]models.Kuznechik, 0)
+		kuznechik, err = h.db.GetKuznechikListByLogin(login)
+		for _, k := range kuznechik {
+			data = append(data, k)
+		}
+	case "rsa":
+		rsaList := make([]models.RSA, 0)
+		rsaList, err = h.db.GetRSAListByLogin(login)
+		for _, r := range rsaList {
+			data = append(data, r)
+		}
+	case "stribog":
+		stribogList := make([]models.Stribog, 0)
+		stribogList, err = h.db.GetStribogListByLogin(login)
+		for _, s := range stribogList {
+			data = append(data, s)
+		}
+	default:
+		jsonError(w, http.StatusBadRequest, "unknown algorithm")
+		return
+	}
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(data)
 }

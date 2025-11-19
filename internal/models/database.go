@@ -18,6 +18,9 @@ type Model interface {
 	DeleteUser(id uint) error
 	ListUsers() ([]User, error)
 	GetKuznechikListByUserID(userID uint) ([]Kuznechik, error)
+	GetKuznechikListByLogin(login string) ([]Kuznechik, error)
 	GetRSAListByUserID(userID uint) ([]RSA, error)
+	GetRSAListByLogin(login string) ([]RSA, error)
 	GetStribogListByUserID(userID uint) ([]Stribog, error)
+	GetStribogListByLogin(login string) ([]Stribog, error)
 }

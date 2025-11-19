@@ -24,6 +24,12 @@ func (db *PostgresDB) GetKuznechikListByUserID(userID uint) ([]models.Kuznechik,
 	return kuzList, err
 }
 
+func (db *PostgresDB) GetKuznechikListByLogin(login string) ([]models.Kuznechik, error) {
+	var user *models.User
+	err := db.Conn.Preload("Kuznechiks").Omit("password").Where("login = ?", login).First(&user).Error
+	return user.Kuznechiks, err
+}
+
 // DeleteKuznechik — удаление по ID
 func (db *PostgresDB) DeleteKuznechik(id int) error {
 	return db.Conn.Delete(&models.Kuznechik{}, id).Error

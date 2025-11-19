@@ -15,6 +15,7 @@ func main() {
 	mux := http.NewServeMux()
 	authMux := http.NewServeMux()
 	softAuthMux := http.NewServeMux()
+	adminMux := http.NewServeMux()
 	config.Init()
 	err := jwt.Init()
 	if err != nil {
@@ -35,8 +36,11 @@ func main() {
 	mux.HandleFunc("POST /register", h.RegisterUser)
 	mux.Handle("/history/", middleware.Auth(authMux))
 	mux.Handle("/encode/", middleware.SoftAuth(softAuthMux))
+	mux.Handle("/admin/", middleware.Auth(middleware.AdminAuth(adminMux)))
 	authMux.HandleFunc("GET /history/{algorithm}", h.GetHistory)
 	softAuthMux.HandleFunc("POST /encode/{algorithm}", h.Encode)
+	adminMux.HandleFunc("GET /admin/history/{algorithm}/{login}", h.GetHistoryByLogin)
+	adminMux.HandleFunc("GET /admin/history/", h.GetHistoryPage)
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,

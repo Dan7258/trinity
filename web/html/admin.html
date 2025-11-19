@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель — Шифрование</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div id="header-container"></div>
+
+<div class="admin-controls" style="margin: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+  <h2>Админ-панель: просмотр истории по пользователю</h2>
+  <input type="text" id="admin-login-input" placeholder="Введите логин пользователя" style="padding: 10px; width: 300px; font-size: 16px;">
+  <button onclick="loadAdminHistory()" style="padding: 10px 20px; font-size: 16px;">Загрузить историю</button>
+  <p id="admin-status" style="margin-top: 10px; color: #666;"></p>
+</div>
+
+<div class="tabs">
+  <div class="tab-button active" data-tab="kuznechik">Кузнечик</div>
+  <div class="tab-button" data-tab="rsa">RSA</div>
+  <div class="tab-button" data-tab="stribog">Стрибог</div>
+</div>
+
+<!-- Вкладки почти как в index.html, только без полей ввода и шифрования -->
+<div class="tab-content active" id="kuznechik">
+  <h2>История Кузнечик</h2>
+  <div class="history-section" style="display: block;">
+    <div id="kuznechik-history-content"></div>
+  </div>
+</div>
+
+<div class="tab-content" id="rsa">
+  <h2>История RSA</h2>
+  <div class="history-section" style="display: block;">
+    <div id="rsa-history-content"></div>
+  </div>
+</div>
+
+<div class="tab-content" id="stribog">
+  <h2>История Стрибог</h2>
+  <div class="history-section" style="display: block;">
+    <div id="stribog-history-content"></div>
+  </div>
+</div>
+
+<!-- Модальное окно для расшифровки (то же самое) -->
+<div id="decrypt-modal" class="modal">
+  <div class="modal-content">
+    <h3>Результат расшифровки</h3>
+    <pre id="decrypt-result"></pre>
+    <button onclick="closeDecryptModal()">Закрыть</button>
+    <button class="copy-btn" onclick="copyModalResult()">Копировать</button>
+  </div>
+</div>
+
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin-script.js"></script>
+</body>
+</html>

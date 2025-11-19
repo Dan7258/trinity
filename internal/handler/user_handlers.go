@@ -20,12 +20,12 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	user.Role = "user"
 	err = h.db.CreateUser(user)
 	if err != nil {
 		jsonError(w, http.StatusConflict, err.Error())
 		return
 	}
-
 	claims := jwt.Claims{
 		ID:    user.ID,
 		Login: user.Login,

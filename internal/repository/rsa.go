@@ -24,6 +24,12 @@ func (db *PostgresDB) GetRSAListByUserID(userID uint) ([]models.RSA, error) {
 	return rsaList, err
 }
 
+func (db *PostgresDB) GetRSAListByLogin(login string) ([]models.RSA, error) {
+	var user *models.User
+	err := db.Conn.Preload("RSAs").Omit("password").Where("login = ?", login).First(&user).Error
+	return user.RSAs, err
+}
+
 // Delete — удаление по ID
 func (db *PostgresDB) Delete(id int) error {
 	return db.Conn.Delete(&models.RSA{}, id).Error
