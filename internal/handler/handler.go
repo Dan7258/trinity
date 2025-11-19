@@ -34,7 +34,7 @@ func (h *Handler) MainPage(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir("web/html/")).ServeHTTP(w, r)
 }
 func (h *Handler) GetHistoryPage(w http.ResponseWriter, r *http.Request) {
-	http.FileServer(http.Dir("web/html/")).ServeHTTP(w, r)
+	http.ServeFile(w, r, "web/html/admin.html")
 }
 
 func (h *Handler) Static(w http.ResponseWriter, r *http.Request) {

@@ -9,7 +9,6 @@ function getTokenFromUrl() {
     return params.get('token');
 }
 
-// Загрузка истории по логину и алгоритму
 async function loadAdminHistory() {
     const login = document.getElementById('admin-login-input').value.trim();
     if (!login) {
@@ -17,16 +16,18 @@ async function loadAdminHistory() {
         return;
     }
 
-    const statusEl = document.getElementById('admin-status');
-    statusEl.textContent = 'Загрузка...';
-
-    currentLogin = login;
-    currentToken = getTokenFromUrl();
-
-    if (!currentToken) {
-        statusEl.innerHTML = '<span style="color:red;">Токен не найден. Перейдите через админ-панель.</span>';
+    const token = localStorage.getItem('token');
+    if (!token) {
+        document.getElementById('admin-status').innerHTML =
+            '<span style="color:red;">Сессия истекла. <a href="/">Войдите заново</a></span>';
         return;
     }
+
+    currentToken = token;  // можно даже не хранить, просто использовать localStorage.getItem('token')
+    currentLogin = login;
+
+    const statusEl = document.getElementById('admin-status');
+    statusEl.textContent = 'Загрузка...';
 
     const activeTab = document.querySelector('.tab-button.active').dataset.tab;
     await fetchAdminHistory(activeTab, login);
