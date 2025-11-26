@@ -9,6 +9,7 @@ import (
 	"trinity/internal/middleware"
 	"trinity/internal/repository"
 	"trinity/pkg/jwt"
+	"trinity/pkg/smtp"
 )
 
 func main() {
@@ -18,6 +19,10 @@ func main() {
 	adminMux := http.NewServeMux()
 	config.Init()
 	err := jwt.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = smtp.InitSMTP()
 	if err != nil {
 		log.Fatal(err)
 	}
