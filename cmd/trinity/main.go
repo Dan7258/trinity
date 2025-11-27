@@ -7,7 +7,8 @@ import (
 	"trinity/internal/config"
 	"trinity/internal/handler"
 	"trinity/internal/middleware"
-	"trinity/internal/repository"
+	"trinity/internal/repository_postgres"
+	"trinity/internal/repository_redis"
 	"trinity/pkg/jwt"
 	"trinity/pkg/smtp"
 )
@@ -26,8 +27,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db := &repository.PostgresDB{}
+	db := &repository_postgres.PostgresDB{}
 	err = db.ConnectToDatabase()
+	if err != nil {
+		log.Fatal(err)
+	}
+	rdb := repository_redis.RedisDB{}
+	err = rdb.ConnectToRedis()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,6 +61,7 @@ func main() {
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+	log.Println("Service working on port http://localhost:8080/")
 	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)

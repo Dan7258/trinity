@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"trinity/internal/models"
@@ -74,6 +77,16 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func GenerateRandomNumber() (string, error) {
+	bigNum := big.NewInt(100000)
+	randomNumber, err := rand.Int(rand.Reader, bigNum)
+	if err != nil {
+		fmt.Println("Ошибка при генерации случайного числа:", err)
+		return "", err
+	}
+	return fmt.Sprintf("%.6d", randomNumber.Int64()), nil
 }
 
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
