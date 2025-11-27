@@ -38,13 +38,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	h := handler.NewHandler(db)
+	h := handler.NewHandler(db, rdb)
 
 	mux.HandleFunc("/", h.MainPage)
 	mux.HandleFunc("/static/", h.Static)
 	mux.HandleFunc("POST /decode/{algorithm}", h.Decode)
 	mux.HandleFunc("POST /login", h.LoginUser)
 	mux.HandleFunc("POST /register", h.RegisterUser)
+	mux.HandleFunc("POST /secure/two-fa/{email}", h.TwoFA)
 	mux.Handle("/api/", middleware.Auth(authMux))
 	mux.Handle("/encode/", middleware.SoftAuth(softAuthMux))
 	mux.Handle("/admin/", middleware.Auth(middleware.AdminAuth(adminMux)))

@@ -5,54 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .hidden { display: none; }
+        .input-group { margin: 15px 0; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #login-message { min-height: 24px; font-weight: 500; }
+        small { color: #666; font-size: 0.9em; }
+    </style>
 </head>
 <body>
 <div id="header-container"></div>
 
 <div style="max-width: 400px; margin: 40px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-    <h2 style="text-align: center;">Вход</h2>
+    <h2 style="text-align: center;">Вход в аккаунт</h2>
+
     <form id="login-form">
-        <input type="text" id="login-username" placeholder="Логин" required style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:4px;">
-        <input type="password" id="login-password" placeholder="Пароль" required style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:4px;">
-        <button type="submit" style="width:100%; padding:12px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Войти</button>
+        <div class="input-group">
+            <input type="email" id="login-email" placeholder="Email" required autocomplete="email"
+                   style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+
+        <div class="input-group">
+            <input type="password" id="login-password" placeholder="Пароль" required autocomplete="current-password"
+                   style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+
+        <div id="code-group" class="input-group hidden">
+            <input type="text" id="login-code" placeholder="Код подтверждения" maxlength="8" autocomplete="one-time-code"
+                   style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+            <small>Код отправлен на вашу почту</small>
+        </div>
+
+        <button type="submit" id="submit-btn"
+                style="width:100%; padding:12px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; margin-top:10px;">
+            Войти
+        </button>
     </form>
+
     <p style="text-align:center; margin-top:15px;">
         Нет аккаунта? <a href="/register.html" style="color:#007bff;">Зарегистрироваться</a>
     </p>
-    <div id="login-message" style="margin-top:15px; text-align:center; color:red;"></div>
+
+    <div id="login-message" style="margin-top:15px; text-align:center;"></div>
 </div>
 
-<script src="/static/js/auth.js"></script>
-<script>
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const login = document.getElementById('login-username').value.trim();
-        const password = document.getElementById('login-password').value;
-
-        const msg = document.getElementById('login-message');
-        msg.textContent = 'Вход...';
-
-        try {
-            const res = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ login, password })
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.token) {
-                localStorage.setItem('token', data.token); // ТОЛЬКО ТОКЕН
-                msg.style.color = 'green';
-                msg.textContent = 'Успешный вход!';
-                setTimeout(() => window.location.href = '/index.html', 1000);
-            } else {
-                msg.textContent = data.message || 'Ошибка входа';
-            }
-        } catch (err) {
-            msg.textContent = 'Сетевая ошибка';
-        }
-    });
-</script>
+<script src="/static/js/auth.js"></script>        <!-- Общий auth.js (загрузка хедера, логаут и т.д.) -->
+<script src="/static/js/login.js"></script>       <!-- Новый файл — только логика входа -->
 </body>
 </html>

@@ -110,6 +110,7 @@ function updateHistoryTab() {
 document.addEventListener('DOMContentLoaded', updateHistoryTab);
 window.addEventListener('storage', (e) => {
     if (e.key === 'token') {
+        updateAuthDisplay();
         updateHistoryTab();
     }
 });

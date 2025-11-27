@@ -1,10 +1,7 @@
 package handler
 
 import (
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
-	"math/big"
 	"net/http"
 	"strconv"
 	"trinity/internal/models"
@@ -48,9 +45,22 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	user := new(models.User)
-	err := json.NewDecoder(r.Body).Decode(&user)
+	data := make(map[string]interface{})
+	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		jsonError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	code, ok := data["code"]
+	user.Login = data["email"].(string)
+	user.Password = data["password"].(string)
+	if !ok {
+		jsonError(w, http.StatusBadRequest, "code is required")
+		return
+	}
+	codeR, err := h.rdb.GetData(user.Login)
+	if err != nil || string(codeR) != code {
+		jsonError(w, http.StatusBadRequest, "code is invalid")
 		return
 	}
 	getUser, err := h.db.GetUserWithPasswordByLogin(user.Login)
@@ -74,19 +84,10 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	_ = h.rdb.DeleteData(getUser.Login)
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
-}
-
-func GenerateRandomNumber() (string, error) {
-	bigNum := big.NewInt(100000)
-	randomNumber, err := rand.Int(rand.Reader, bigNum)
-	if err != nil {
-		fmt.Println("Ошибка при генерации случайного числа:", err)
-		return "", err
-	}
-	return fmt.Sprintf("%.6d", randomNumber.Int64()), nil
 }
 
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
