@@ -1,15 +1,13 @@
 package handler
 
 import (
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"time"
 	"trinity/internal/models"
 	"trinity/internal/repository_redis"
+	"trinity/pkg/code_gen"
 	"trinity/pkg/smtp"
 )
 
@@ -57,7 +55,7 @@ func (h *Handler) TwoFA(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "User not found")
 		return
 	}
-	code, _ := GenerateRandomNumber()
+	code, _ := code_gen.GenerateRandomNumber()
 	err = h.rdb.Set(r.Context(), email, code, time.Minute*10).Err()
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
@@ -73,14 +71,4 @@ func (h *Handler) TwoFA(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("{}"))
-}
-
-func GenerateRandomNumber() (string, error) {
-	bigNum := big.NewInt(100000)
-	randomNumber, err := rand.Int(rand.Reader, bigNum)
-	if err != nil {
-		fmt.Println("Ошибка при генерации случайного числа:", err)
-		return "", err
-	}
-	return fmt.Sprintf("%.6d", randomNumber.Int64()), nil
 }

@@ -11,6 +11,7 @@ import (
 	"trinity/internal/repository_redis"
 	"trinity/pkg/jwt"
 	"trinity/pkg/smtp"
+	"trinity/pkg/telegram"
 )
 
 func main() {
@@ -37,6 +38,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = telegram.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+	go telegram.HandleUpdates()
 
 	h := handler.NewHandler(db, rdb)
 
