@@ -10,7 +10,21 @@
         .input-group { margin: 15px 0; }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
         #login-message { min-height: 24px; font-weight: 500; }
-        small { color: #666; font-size: 0.9em; }
+        small { color: #666; font-size: 0.9em; display: block; margin-top: 5px; }
+        .telegram-link {
+            color: #0088cc;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .telegram-link:hover {
+            text-decoration: underline;
+        }
+        .code-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -30,10 +44,28 @@
                    style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
         </div>
 
-        <div id="code-group" class="input-group hidden">
-            <input type="text" id="login-code" placeholder="Код подтверждения" maxlength="8" autocomplete="one-time-code"
-                   style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
-            <small>Код отправлен на вашу почту</small>
+        <div id="codes-group" class="hidden">
+            <div class="code-section">
+                <div class="input-group" style="margin: 0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">📧 Код с почты:</label>
+                    <input type="text" id="login-code-email" placeholder="Введите код из письма" maxlength="8" autocomplete="one-time-code"
+                           style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                    <small>Код отправлен на вашу почту</small>
+                </div>
+            </div>
+
+            <div class="code-section">
+                <div class="input-group" style="margin: 0;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">💬 Код из Telegram:</label>
+                    <input type="text" id="login-code-telegram" placeholder="Введите код из бота" maxlength="8" autocomplete="off"
+                           style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px;">
+                    <small>
+                        Откройте бота
+                        <a href="https://t.me/uga_bugaaa_bot" target="_blank" class="telegram-link">@uga_bugaaa_bot</a>
+                        и напишите команду /generateCode
+                    </small>
+                </div>
+            </div>
         </div>
 
         <button type="submit" id="submit-btn"
@@ -49,7 +81,7 @@
     <div id="login-message" style="margin-top:15px; text-align:center;"></div>
 </div>
 
-<script src="/static/js/auth.js"></script>        <!-- Общий auth.js (загрузка хедера, логаут и т.д.) -->
-<script src="/static/js/login.js"></script>       <!-- Новый файл — только логика входа -->
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/login.js"></script>
 </body>
 </html>

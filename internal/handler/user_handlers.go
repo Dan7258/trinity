@@ -51,16 +51,27 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	code, ok := data["code"]
-	user.Login = data["email"].(string)
-	user.Password = data["password"].(string)
+	codeEmail, ok := data["code_email"]
 	if !ok {
-		jsonError(w, http.StatusBadRequest, "code is required")
+		jsonError(w, http.StatusBadRequest, "email code is required")
 		return
 	}
-	codeR, err := h.rdb.GetData(user.Login)
-	if err != nil || string(codeR) != code {
-		jsonError(w, http.StatusBadRequest, "code is invalid")
+	codeTg, ok := data["code_telegram"]
+	if !ok {
+		jsonError(w, http.StatusBadRequest, "telegram code is required")
+		return
+	}
+	user.Login = data["email"].(string)
+	user.Password = data["password"].(string)
+
+	codeRE, err := h.rdb.GetData(user.Login)
+	if err != nil || string(codeRE) != codeEmail {
+		jsonError(w, http.StatusBadRequest, "email code is invalid")
+		return
+	}
+	codeRT, err := h.rdb.GetData("tg_" + user.Login)
+	if err != nil || string(codeRT) != codeTg {
+		jsonError(w, http.StatusBadRequest, "telegram code is invalid")
 		return
 	}
 	getUser, err := h.db.GetUserWithPasswordByLogin(user.Login)
@@ -84,7 +95,8 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	_ = h.rdb.DeleteData(getUser.Login)
+	h.rdb.DeleteData(user.Login)
+	h.rdb.DeleteData("tg_" + user.Login)
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)

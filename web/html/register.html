@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Регистрация</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .input-group {
+      margin: 15px 0;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .input-group small {
+      display: block;
+      margin-top: 5px;
+      color: #666;
+      font-size: 0.85em;
+    }
+    .telegram-hint {
+      color: #0088cc;
+      font-weight: 500;
+    }
+  </style>
 </head>
 <body>
 <div id="header-container"></div>
@@ -12,14 +40,39 @@
 <div style="max-width: 400px; margin: 40px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
   <h2 style="text-align: center;">Регистрация</h2>
   <form id="register-form">
-    <input type="text" id="reg-login" placeholder="Логин" required style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:4px;">
-    <input type="password" id="reg-password" placeholder="Пароль" required style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:4px;">
-    <input type="password" id="reg-confirm" placeholder="Повторите пароль" required style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:4px;">
-    <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">Зарегистрироваться</button>
+    <div class="input-group">
+      <label for="reg-login">Логин (Email)</label>
+      <input type="email" id="reg-login" placeholder="example@mail.com" required>
+    </div>
+
+    <div class="input-group">
+      <label for="reg-telegram">Telegram Username</label>
+      <input type="text" id="reg-telegram" placeholder="@username или username" required>
+      <small>
+        Укажите ваш Telegram username для получения кодов подтверждения.<br>
+        Откройте бота <a href="https://t.me/uga_bugaaa_bot" target="_blank" class="telegram-hint">@uga_bugaaa_bot</a> и нажмите /start
+      </small>
+    </div>
+
+    <div class="input-group">
+      <label for="reg-password">Пароль</label>
+      <input type="password" id="reg-password" placeholder="Минимум 6 символов" required>
+    </div>
+
+    <div class="input-group">
+      <label for="reg-confirm">Повторите пароль</label>
+      <input type="password" id="reg-confirm" placeholder="Повторите пароль" required>
+    </div>
+
+    <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; margin-top:10px;">
+      Зарегистрироваться
+    </button>
   </form>
+
   <p style="text-align:center; margin-top:15px;">
     Уже есть аккаунт? <a href="/login.html" style="color:#007bff;">Войти</a>
   </p>
+
   <div id="register-message" style="margin-top:15px; text-align:center; color:red;"></div>
 </div>
 
@@ -27,37 +80,75 @@
 <script>
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const login = document.getElementById('reg-login').value.trim();
+    let telegram = document.getElementById('reg-telegram').value.trim();
     const password = document.getElementById('reg-password').value;
     const confirm = document.getElementById('reg-confirm').value;
 
     const msg = document.getElementById('register-message');
 
+    // Проверка email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login)) {
+      msg.textContent = 'Введите корректный email';
+      return;
+    }
+
+    // Убираем @ если пользователь его добавил
+    if (telegram.startsWith('@')) {
+      telegram = telegram.substring(1);
+    }
+
+    // Проверка username Telegram (буквы, цифры, подчеркивание, минимум 5 символов)
+    if (!telegram || telegram.length < 5 || !/^[a-zA-Z0-9_]+$/.test(telegram)) {
+      msg.textContent = 'Telegram username должен содержать минимум 5 символов (буквы, цифры, _)';
+      return;
+    }
+
+    // Проверка длины пароля
+    if (password.length < 6) {
+      msg.textContent = 'Пароль должен содержать минимум 6 символов';
+      return;
+    }
+
+    // Проверка совпадения паролей
     if (password !== confirm) {
       msg.textContent = 'Пароли не совпадают';
       return;
     }
 
+    msg.style.color = '#007bff';
     msg.textContent = 'Регистрация...';
 
     try {
       const res = await fetch('/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password })
+        body: JSON.stringify({
+          login,
+          password,
+          telegram
+        })
       });
 
       const data = await res.json();
 
       if (res.ok && data.token) {
-        localStorage.setItem('token', data.token); // ТОЛЬКО ТОКЕН
+        localStorage.setItem('token', data.token);
         msg.style.color = 'green';
-        msg.textContent = 'Успешно! Вход...';
-        setTimeout(() => window.location.href = '/index.html', 1500);
+        msg.textContent = 'Успешно! Не забудьте написать боту @uga_bugaaa_bot';
+
+        // Обновляем хедер
+        window.dispatchEvent(new StorageEvent('storage', { key: 'token' }));
+
+        setTimeout(() => window.location.href = '/index.html', 2000);
       } else {
+        msg.style.color = 'red';
         msg.textContent = data.message || 'Ошибка регистрации';
       }
     } catch (err) {
+      console.error(err);
+      msg.style.color = 'red';
       msg.textContent = 'Сетевая ошибка';
     }
   });

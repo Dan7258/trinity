@@ -6,19 +6,32 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
+	"time"
+	"trinity/internal/models"
+	"trinity/internal/repository_redis"
 	"trinity/pkg/code_gen"
 )
 
-var bot *tgbotapi.BotAPI
+type Bot struct {
+	*tgbotapi.BotAPI
+	db  models.Model
+	rdb repository_redis.RedisDB
+}
 
-func Init() error {
+func NewBot(db models.Model, redisDB repository_redis.RedisDB) *Bot {
+	return &Bot{
+		db:  db,
+		rdb: redisDB,
+	}
+}
+
+func (bot *Bot) ConnectBot() error {
 	token := os.Getenv("TG_BOT_TOKEN")
 	if token == "" {
 		return errors.New("Укажи TG_BOT_TOKEN в переменных окружения")
 	}
-
 	var err error
-	bot, err = tgbotapi.NewBotAPI(token)
+	bot.BotAPI, err = tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return err
 	}
@@ -29,7 +42,7 @@ func Init() error {
 }
 
 // Обработка обновлений
-func HandleUpdates() {
+func (bot *Bot) HandleUpdates() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -54,10 +67,13 @@ func HandleUpdates() {
 			bot.Send(msg)
 
 		case "generateCode":
-			// Генерируем код (можешь выбрать любой вариант)
-			code, _ := code_gen.GenerateRandomNumber() // Например: A7K9M2X1
-			// code := generateHexCode(4)  // Например: 3f7a9c2e
+			code, _ := code_gen.GenerateRandomNumber()
+			username := update.Message.From.UserName
 
+			user, err := bot.db.GetUserByTelegram(username)
+			if err == nil {
+				_ = bot.rdb.SetData("tg_"+user.Login, []byte(code), time.Minute*10)
+			}
 			responseText := fmt.Sprintf("🎫 Твой код: <code>%s</code>", code)
 
 			msg := tgbotapi.NewMessage(chatID, responseText)
@@ -72,18 +88,4 @@ func HandleUpdates() {
 			bot.Send(msg)
 		}
 	}
-}
-
-// Если нужно отправить код конкретному пользователю
-func SendCodeToUser(chatID int64) error {
-	code, _ := code_gen.GenerateRandomNumber()
-	text := fmt.Sprintf("🎫 Твой код: <code>%s</code>\n\nИспользуй его в течение 24 часов", code)
-
-	msg := tgbotapi.NewMessage(chatID, text)
-	msg.ParseMode = "HTML"
-
-	if _, err := bot.Send(msg); err != nil {
-		return err
-	}
-	return nil
 }

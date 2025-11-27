@@ -37,6 +37,12 @@ func (db *PostgresDB) GetUserWithPasswordByLogin(login string) (*models.User, er
 	return &user, nil
 }
 
+func (db *PostgresDB) GetUserByTelegram(telegram string) (*models.User, error) {
+	var user models.User
+	err := db.Conn.Omit("password").Where("telegram = ?", telegram).First(&user).Error
+	return &user, err
+}
+
 func (db *PostgresDB) UpdateUser(user *models.User) error {
 	return db.Conn.Save(user).Error
 }

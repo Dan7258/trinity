@@ -13,6 +13,7 @@ type Model interface {
 	CreateStribog(stribog *Stribog) error
 	GetUserByID(id uint) (*User, error)
 	GetUserByLogin(login string) (*User, error)
+	GetUserByTelegram(telegram string) (*User, error)
 	GetUserWithPasswordByLogin(login string) (*User, error)
 	UpdateUser(user *User) error
 	DeleteUser(id uint) error

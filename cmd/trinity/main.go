@@ -38,12 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	bot := telegram.NewBot(db, rdb)
 
-	err = telegram.Init()
+	err = bot.ConnectBot()
 	if err != nil {
 		log.Fatal(err)
 	}
-	go telegram.HandleUpdates()
+	go bot.HandleUpdates()
 
 	h := handler.NewHandler(db, rdb)
 
