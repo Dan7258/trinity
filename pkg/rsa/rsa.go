@@ -1,10 +1,12 @@
 package rsa
 
 import (
-	"bufio"
 	"errors"
+	"log"
 	"math/big"
+	"math/rand"
 	"os"
+	"trinity/pkg/big_int_generate"
 )
 
 type Encrypt struct {
@@ -87,21 +89,26 @@ func DecodeData(ed *EncryptedData) (*string, error) {
 }
 
 func (ln *LargeNums) generateLargeNums() error {
-	//cmd := exec.Command("make")
-	//err := cmd.Run()
-	//if err != nil {
-	//	return err
-	//}
-	file, err := os.Open("./pkg/rsa/numbers.txt")
+	nums, err := big_int_generate.GetDataFromFile(os.Getenv("FILE_WITH_BIG_NUMS"))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	ln.p.SetString(scanner.Text(), 10)
-	scanner.Scan()
-	ln.q.SetString(scanner.Text(), 10)
+	counter := 0
+	for _, num := range nums {
+		if num != "0" {
+			counter++
+		}
+	}
+	if counter < 2 {
+		log.Fatal("malo bol`shih chisel")
+	}
+	randomNumber1 := rand.Intn(counter)
+	randomNumber2 := rand.Intn(counter)
+	for randomNumber1 == randomNumber2 {
+		randomNumber2 = rand.Intn(counter)
+	}
+	ln.p.SetString(nums[randomNumber1], 10)
+	ln.q.SetString(nums[randomNumber2], 10)
 	return nil
 }
 

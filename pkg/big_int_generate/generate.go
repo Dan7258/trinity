@@ -2,7 +2,11 @@ package big_int_generate
 
 import (
 	"crypto/rand"
+	"encoding/json"
+	"log"
 	"math/big"
+	"os"
+	"time"
 )
 
 var (
@@ -10,6 +14,71 @@ var (
 	one  = big.NewInt(1)
 	two  = big.NewInt(2)
 )
+
+func InitFile() error {
+	nums := []string{"0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}
+	numsCh, err := GetDataFromFile(os.Getenv("FILE_WITH_BIG_NUMS"))
+	if err == nil {
+		nums = numsCh
+	}
+	return SaveDataToFile(os.Getenv("FILE_WITH_BIG_NUMS"), nums)
+}
+
+func GenerateRandomPrimeNums(size int) error {
+	nums, err := GetDataFromFile(os.Getenv("FILE_WITH_BIG_NUMS"))
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	startTime := time.Now()
+	for i := 0; ; {
+		num := GetRandomPrime(size)
+		for !uniqueInNums(num.String(), nums) {
+			num = GetRandomPrime(size)
+		}
+		log.Printf("Generated random prime number by %s", time.Now().Sub(startTime).String())
+		startTime = time.Now()
+		nums[i] = num.String()
+		err = SaveDataToFile(os.Getenv("FILE_WITH_BIG_NUMS"), nums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		i = (i + 1) % 10
+	}
+}
+
+func uniqueInNums(num string, nums []string) bool {
+	for _, n := range nums {
+		if n == num {
+			return false
+		}
+	}
+	return true
+}
+
+func GetDataFromFile(filename string) ([]string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	decoder := json.NewDecoder(f)
+	var data []string
+	err = decoder.Decode(&data)
+	return data, err
+}
+
+func SaveDataToFile(filename string, nums []string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		log.Fatalf("SaveDataToFile: %v", err)
+		return err
+	}
+	defer f.Close()
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", " ")
+	return encoder.Encode(nums)
+}
 
 func PowModulo(b *big.Int, e *big.Int, m *big.Int) *big.Int {
 	result := new(big.Int)
