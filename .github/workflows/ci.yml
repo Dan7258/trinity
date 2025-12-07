@@ -20,3 +20,32 @@ jobs:
 
       - name: Build
         run: go build -o trinity cmd/trinity/main.go
+  createF:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          cat > ./internal/config/.env << EOF
+          DB_HOST=${{ secrets.DB_HOST }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+          POSTGRES_SSLMODE=${{ secrets.POSTGRES_SSLMODE }}
+          REDIS_HOST=${{ secrets.REDIS_HOST }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
+          FILE_WITH_BIG_NUMS=${{ secrets.FILE_WITH_BIG_NUMS }}
+          EOF
+
+      - name: Show file was created
+        run: |
+          echo "File created:"
+          ls -la ./internal/config/.env
+          echo "File exists!"     
