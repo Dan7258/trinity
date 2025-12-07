@@ -79,6 +79,7 @@ jobs:
         with:
           name: env-file
           path: ./internal/config/
+
       - name: Rename to .env
         run: mv ./internal/config/config.app ./internal/config/.env
 
