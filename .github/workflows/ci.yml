@@ -17,14 +17,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.25.3'
-
-      - name: Build
-        run: go build -o trinity cmd/trinity/main.go
-  createF:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
       - name: Create .env file
         run: |
           cat > ./internal/config/.env << EOF
@@ -48,4 +40,13 @@ jobs:
         run: |
           echo "File created:"
           ls -la ./internal/config/.env
-          echo "File exists!"     
+          echo "File exists!"  
+
+      - name: Start databases on Docker
+        run: docker-compose up -d
+
+      - name: Build
+        run: go build -o trinity cmd/trinity/main.go
+
+      - name: run service
+        run: ./trinity
