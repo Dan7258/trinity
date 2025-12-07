@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -85,24 +84,5 @@ func main() {
 	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-func spinner(done chan bool) {
-	chars := []rune{'|', '/', '-', '\\'}
-	start := time.Now()
-	for {
-		select {
-		case <-done:
-			fmt.Println("\nчисла сгенерировались")
-			return
-		default:
-			for _, r := range chars {
-				now := time.Since(start).Seconds()
-				fmt.Printf("\r%c прошло %v сек.", r, int(now))
-				time.Sleep(100 * time.Millisecond)
-			}
-
-		}
 	}
 }

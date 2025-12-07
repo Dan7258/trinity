@@ -3,6 +3,7 @@ package big_int_generate
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -99,9 +100,35 @@ func GetRandom(size int) *big.Int {
 }
 
 func GetRandomPrime(size int) *big.Int {
+	ch := make(chan bool)
+	go spinner(ch)
 	n := GetRandom(size)
+	ch <- true
+	log.Println("\nСгенерировалось число, теперь ждем простое число")
 	p := GetNextPrime(n)
+	go spinner(ch)
+	ch <- true
+	close(ch)
 	return p
+}
+
+func spinner(done chan bool) {
+	chars := []rune{'|', '/', '-', '\\'}
+	start := time.Now()
+	for {
+		select {
+		case <-done:
+			fmt.Println("\nчисла сгенерировались")
+			return
+		default:
+			for _, r := range chars {
+				now := time.Since(start).Seconds()
+				fmt.Printf("\r%c прошло %v сек.", r, int(now))
+				time.Sleep(200 * time.Millisecond)
+			}
+
+		}
+	}
 }
 
 func GetNextPrime(n *big.Int) *big.Int {
