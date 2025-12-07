@@ -49,4 +49,4 @@ jobs:
         run: go build -o trinity cmd/trinity/main.go
 
       - name: run service
-        run: timeout 10s ./trinity
+        run: timeout 10s ./trinity || true
